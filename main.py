@@ -1,13 +1,16 @@
 import numpy as np
 import pandas as pd
-from dash import Dash, _dash_renderer, Input, Output,html,dcc, callback
+from dash import Dash, _dash_renderer, Input, Output, html, dcc, callback, dash_table
 import dash_bootstrap_components as dbc
 import dash_mantine_components as dmc
 import plotly.express as px
 
 #read data from csv using pd
-#df = pd.read_csv()
+df2 = pd.read_csv('./datasets/dataset.csv')
 
+#data summary
+attributes = df2.columns.tolist()
+attributes = [dmc.Text(size="sm", weight=500, children=item) for item in attributes]
 
 #Create the treemap fig
 fig_one = px.treemap(names = ["Eve","Cain", "Seth", "Enos", "Noam", "Abel", "Awan", "Enoch", "Azura"],
@@ -30,8 +33,16 @@ app = Dash()
 
 #app layout
 app.layout = dmc.Container([
-    dmc.Title('Movie and TV Shows Data Visualiztaion',color="blue", size="h3"),
+    dmc.Title('Movie and TV Shows Data Visualiztaion', color="blue", size="h3"),
     dmc.Title("COMP4462 Group 8 (Daisy Har, Aatrox Deng, Lyam Tang)", size ="h6" ),
+    html.Div(className='row', children=[
+        dmc.Title("Attributes", size="h10"),
+        dmc.Container(fluid=True, children=attributes)
+    ]),
+    html.Div(className='row', children=[
+        dmc.Title("Dataset", size="h10"),
+        dash_table.DataTable(data=df2.to_dict('records'), page_size=10, style_table={'overflowX': 'auto'})
+    ]),
     dcc.Graph(id="graph-three", figure= fig_three),
     dmc.Grid([
         dmc.Col([

@@ -5,12 +5,35 @@ import dash_bootstrap_components as dbc
 import dash_mantine_components as dmc
 import plotly.express as px
 
-#read data from csv using pd
+# preprocess the dataset
 df2 = pd.read_csv('./datasets/dataset.csv')
+df2.dropna(subset=['Year', 'Rating', 'Genre'], inplace=True) # drop the nan value
+df2 = df2.assign(Genre=df2['Genre'].str.split(', ')).explode('Genre') # tokenise genre
 
 #data summary
-attributes = df2.columns.tolist()
-attributes = [dmc.Text(size="sm", weight=500, children=item) for item in attributes]
+
+# Attributes:
+# Poster
+# Title
+# Year
+# Certificate
+# Duration (min)
+# Genre
+# Rating
+# Metascore
+# Director
+# Cast
+# Votes
+# Description
+# Review Count
+# Review Title
+# Review
+# Country
+
+#Create the line fig
+df_line = df2.drop_duplicates(subset=['Year', 'Genre'])
+df_line_grouped = df2.groupby(['Year', 'Genre'])['Rating'].mean().reset_index()
+fig_line = px.line(df_line_grouped, x='Year', y='Rating', color='Genre', title='Movie Popularity by Genre Over Time')
 
 #Create the treemap fig
 fig_one = px.treemap(names = ["Eve","Cain", "Seth", "Enos", "Noam", "Abel", "Awan", "Enoch", "Azura"],
@@ -36,14 +59,10 @@ app.layout = dmc.Container([
     dmc.Title('Movie and TV Shows Data Visualiztaion', color="blue", size="h3"),
     dmc.Title("COMP4462 Group 8 (Daisy Har, Aatrox Deng, Lyam Tang)", size ="h6" ),
     html.Div(className='row', children=[
-        dmc.Title("Attributes", size="h10"),
-        dmc.Container(fluid=True, children=attributes)
-    ]),
-    html.Div(className='row', children=[
         dmc.Title("Dataset", size="h10"),
         dash_table.DataTable(data=df2.to_dict('records'), page_size=10, style_table={'overflowX': 'auto'})
     ]),
-    dcc.Graph(id="graph-three", figure= fig_three),
+    dcc.Graph(id="graph-line", figure=fig_line),
     dmc.Grid([
         dmc.Col([
             dcc.Graph(id='graph-one',figure=fig_one)

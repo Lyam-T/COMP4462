@@ -47,6 +47,9 @@ df_filtered = df2[df2['Year'] >= 2020]
 # Prepare the data
 df_sankey = df_filtered.groupby(['Year', 'Genre'])['Rating'].mean().reset_index()
 
+# Sort the data within each year group by the average rating
+df_sankey = df_sankey.sort_values(by=['Year', 'Rating'], ascending=[True, False])
+
 # Create lists for source, target, and value
 years = sorted(df_sankey['Year'].unique())
 genres = df_sankey['Genre'].unique()
@@ -54,6 +57,9 @@ genres = df_sankey['Genre'].unique()
 source = []
 target = []
 value = []
+
+# Dictionary to store the average score for each node
+node_scores = {}
 
 for i in range(len(years) - 1):
     year_current = years[i]
@@ -67,9 +73,16 @@ for i in range(len(years) - 1):
         rating_next = df_next[df_next['Genre'] == genre]['Rating'].values
         
         if len(rating_current) > 0 and len(rating_next) > 0:
-            source.append(f"{year_current} - {genre}")
-            target.append(f"{year_next} - {genre}")
+            source_label = f"{year_current} - {genre}"
+            target_label = f"{year_next} - {genre}"
+            
+            source.append(source_label)
+            target.append(target_label)
             value.append(abs(rating_next[0] - rating_current[0]))
+            
+            # Store the average score for each node
+            node_scores[source_label] = rating_current[0]
+            node_scores[target_label] = rating_next[0]
 
 # Create a list of all unique labels
 labels = list(set(source + target))
@@ -91,6 +104,9 @@ for label in labels:
     genre = label.split(" - ")[1]
     node_colors.append(genre_colors[genre])
 
+# Create the hover template
+hover_template = "Genre: %{label}<br>Average Rating: %{customdata:.2f}<extra></extra>"
+
 # Create the Sankey diagram
 fig_sankey = go.Figure(data=[go.Sankey(
     node=dict(
@@ -98,7 +114,9 @@ fig_sankey = go.Figure(data=[go.Sankey(
         thickness=20,
         line=dict(color="black", width=0.5),
         label=labels,
-        color=node_colors
+        color=node_colors,
+        customdata=[node_scores[label] for label in labels],
+        hovertemplate=hover_template
     ),
     link=dict(
         source=source_indices,

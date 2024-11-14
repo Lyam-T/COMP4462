@@ -158,13 +158,15 @@ genre_color = {
 }
 df_parallel['Color'] = df_parallel['Genre'].map(genre_color)
 # px parallel fig
-fig_parallel = px.parallel_coordinates(df_parallel, dimensions=['Year', 'Rating', 'Revenue'], color='Color')
+fig_parallel = px.parallel_coordinates(df_parallel, dimensions=['Year', 'Rating', 'Revenue'])
+fig_parallel.update_layout(template='plotly_dark')
 
 #Create the treemap fig
 fig_one = px.treemap(names = ["Eve","Cain", "Seth", "Enos", "Noam", "Abel", "Awan", "Enoch", "Azura"],
     parents = ["", "Eve", "Eve", "Seth", "Seth", "Eve", "Eve", "Awan", "Eve"])
 fig_one.update_traces(root_color="lightgrey")
-fig_one.update_layout(margin = dict(t=50, l=25, r=25, b=25))
+fig_one.update_layout(margin = dict(t=50, l=25, r=25, b=25), template='plotly_dark')
+
 
 df = pd.DataFrame({
     "Fruit": ["Apples", "Oranges", "Bananas", "Apples", "Oranges", "Bananas"],
@@ -173,20 +175,18 @@ df = pd.DataFrame({
 })
 
 fig_two = px.bar(df, x="Fruit", y="Amount", color="City", barmode="group")
+fig_two.update_layout(template='plotly_dark')
+
 
 fig_three = px.pie(names=['Oxygen','Hydrogen','Carbon_Dioxide','Nitrogen'], values=[4500, 2500, 1053, 500], title="Atmosphere Composition")
 
 #initialize the app
-app = Dash()
+app = Dash(__name__, external_stylesheets=[dbc.themes.DARKLY])
 
 #app layout
 app.layout = dmc.Container([
     dmc.Title('Movie and TV Shows Data Visualiztaion', color="blue", size="h3"),
     dmc.Title("COMP4462 Group 8 (Daisy Har, Aatrox Deng, Lyam Tang)", size ="h6" ),
-    html.Div(className='row', children=[
-        dmc.Title("Dataset", size="h10"),
-        dash_table.DataTable(data=df2.to_dict('records'), page_size=10, style_table={'overflowX': 'auto'})
-    ]),
     dcc.Graph(id="graph-parallel", figure=fig_parallel),
     dmc.Grid([
         dmc.Col([

@@ -180,13 +180,23 @@ fig_two.update_layout(template='plotly_dark')
 
 fig_three = px.pie(names=['Oxygen','Hydrogen','Carbon_Dioxide','Nitrogen'], values=[4500, 2500, 1053, 500], title="Atmosphere Composition")
 
+# set the stylesheet
+external_stylesheets = [
+    'https://stackpath.bootstrapcdn.com/bootswatch/4.5.2/darkly/bootstrap.min.css',
+    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css'
+]
+
 #initialize the app
-app = Dash(__name__, external_stylesheets=[dbc.themes.DARKLY])
+app = Dash(__name__, external_stylesheets=external_stylesheets)
 
 #app layout
 app.layout = dmc.Container([
     dmc.Title('Movie and TV Shows Data Visualiztaion', color="blue", size="h3"),
     dmc.Title("COMP4462 Group 8 (Daisy Har, Aatrox Deng, Lyam Tang)", size ="h6" ),
+    html.Div([
+        html.I(className='fas fa-search search-icon', style={'margin-right': '5px'}),
+        dbc.Input(id='search-input', type='text', placeholder='Search...', style={'flex': '1', 'background-color': 'transparent', 'color': 'white'}),
+    ], style={'display': 'flex', 'align-items': 'center'}),
     dcc.Graph(id="graph-parallel", figure=fig_parallel),
     dmc.Grid([
         dmc.Col([

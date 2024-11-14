@@ -8,7 +8,6 @@ import plotly.graph_objects as go
 
 # preprocess the dataset
 df2 = pd.read_csv('./datasets/dataset.csv')
-df2.dropna(subset=['Year', 'Rating', 'Genre'], inplace=True) # drop the nan value
 df2 = df2.assign(Genre=df2['Genre'].str.split(', ')).explode('Genre') # tokenise genre
 
 #data summary
@@ -29,101 +28,137 @@ df2 = df2.assign(Genre=df2['Genre'].str.split(', ')).explode('Genre') # tokenise
 # Review Count
 # Review Title
 # Review
+# Revenue
 # Country
 
-#Create the line fig
-df_line = df2.drop_duplicates(subset=['Year', 'Genre'])
-df_line_grouped = df2.groupby(['Year', 'Genre'])['Rating'].mean().reset_index()
-fig_line = px.line(df_line_grouped, x='Year', y='Rating', color='Genre', title='Movie Popularity by Genre Over Time')
+# #Create the line fig
+# df_line = df2.drop_duplicates(subset=['Year', 'Genre'])
+# df_line_grouped = df2.groupby(['Year', 'Genre'])['Rating'].mean().reset_index()
+# fig_line = px.line(df_line_grouped, x='Year', y='Rating', color='Genre', title='Movie Popularity by Genre Over Time')
 
-# create stream fig
-df_stream = df2.groupby(['Year', 'Genre'])['Rating'].mean().reset_index()
-fig_stream = px.area(df_stream, x='Year', y='Rating', color='Genre', title='Movie Popularity by Genre Over Time')
+# # create stream fig
+# df_stream = df2.groupby(['Year', 'Genre'])['Rating'].mean().reset_index()
+# fig_stream = px.area(df_stream, x='Year', y='Rating', color='Genre', title='Movie Popularity by Genre Over Time')
 
-# create sankey fig
-# Filter the data to include only data from 2020 onwards
-df_filtered = df2[df2['Year'] >= 2020]
+# # create sankey fig
+# # Filter the data to include only data from 2020 onwards
+# df_filtered = df2[df2['Year'] >= 2020]
 
-# Prepare the data
-df_sankey = df_filtered.groupby(['Year', 'Genre'])['Rating'].mean().reset_index()
+# # Prepare the data
+# df_sankey = df_filtered.groupby(['Year', 'Genre']).agg(
+#     Rating=('Rating', 'mean'),
+#     Count=('Rating', 'size')
+# ).reset_index()
 
-# Sort the data within each year group by the average rating
-df_sankey = df_sankey.sort_values(by=['Year', 'Rating'], ascending=[True, False])
+# # Sort the data within each year group by the average rating
+# df_sankey = df_sankey.sort_values(by=['Year', 'Rating'], ascending=[True, False])
 
-# Create lists for source, target, and value
-years = sorted(df_sankey['Year'].unique())
-genres = df_sankey['Genre'].unique()
+# # Create lists for source, target, and value
+# years = sorted(df_sankey['Year'].unique())
+# genres = df_sankey['Genre'].unique()
 
-source = []
-target = []
-value = []
+# source = []
+# target = []
+# value = []
 
-# Dictionary to store the average score for each node
-node_scores = {}
+# # Dictionary to store the average score and count for each node
+# node_scores = {}
+# node_counts = {}
 
-for i in range(len(years) - 1):
-    year_current = years[i]
-    year_next = years[i + 1]
+# for i in range(len(years) - 1):
+#     year_current = years[i]
+#     year_next = years[i + 1]
     
-    df_current = df_sankey[df_sankey['Year'] == year_current]
-    df_next = df_sankey[df_sankey['Year'] == year_next]
+#     df_current = df_sankey[df_sankey['Year'] == year_current]
+#     df_next = df_sankey[df_sankey['Year'] == year_next]
     
-    for genre in genres:
-        rating_current = df_current[df_current['Genre'] == genre]['Rating'].values
-        rating_next = df_next[df_next['Genre'] == genre]['Rating'].values
+#     for genre in genres:
+#         rating_current = df_current[df_current['Genre'] == genre]['Rating'].values
+#         rating_next = df_next[df_next['Genre'] == genre]['Rating'].values
+#         count_current = df_current[df_current['Genre'] == genre]['Count'].values
+#         count_next = df_next[df_next['Genre'] == genre]['Count'].values
         
-        if len(rating_current) > 0 and len(rating_next) > 0:
-            source_label = f"{year_current} - {genre}"
-            target_label = f"{year_next} - {genre}"
+#         if len(rating_current) > 0 and len(rating_next) > 0:
+#             source_label = f"{year_current} - {genre}"
+#             target_label = f"{year_next} - {genre}"
             
-            source.append(source_label)
-            target.append(target_label)
-            value.append(abs(rating_next[0] - rating_current[0]))
+#             source.append(source_label)
+#             target.append(target_label)
+#             value.append(abs(rating_next[0] - rating_current[0]))
             
-            # Store the average score for each node
-            node_scores[source_label] = rating_current[0]
-            node_scores[target_label] = rating_next[0]
+#             # Store the average score and count for each node
+#             node_scores[source_label] = rating_current[0]
+#             node_scores[target_label] = rating_next[0]
+#             node_counts[source_label] = count_current[0]
+#             node_counts[target_label] = count_next[0]
 
-# Create a list of all unique labels
-labels = list(set(source + target))
+# # Create a list of all unique labels
+# labels = list(set(source + target))
 
-# Create a mapping from labels to indices
-label_indices = {label: i for i, label in enumerate(labels)}
+# # Create a mapping from labels to indices
+# label_indices = {label: i for i, label in enumerate(labels)}
 
-# Map source and target labels to indices
-source_indices = [label_indices[label] for label in source]
-target_indices = [label_indices[label] for label in target]
+# # Map source and target labels to indices
+# source_indices = [label_indices[label] for label in source]
+# target_indices = [label_indices[label] for label in target]
 
-# Define a color palette for genres
-color_palette = px.colors.qualitative.Plotly
-genre_colors = {genre: color_palette[i % len(color_palette)] for i, genre in enumerate(genres)}
+# # Define a color palette for genres
+# color_palette = px.colors.qualitative.Plotly
+# genre_colors = {genre: color_palette[i % len(color_palette)] for i, genre in enumerate(genres)}
 
-# Map colors to nodes
-node_colors = []
-for label in labels:
-    genre = label.split(" - ")[1]
-    node_colors.append(genre_colors[genre])
+# # Map colors to nodes
+# node_colors = []
+# for label in labels:
+#     genre = label.split(" - ")[1]
+#     node_colors.append(genre_colors[genre])
 
-# Create the hover template
-hover_template = "Genre: %{label}<br>Average Rating: %{customdata:.2f}<extra></extra>"
+# # Create the hover template
+# hover_template = "Genre: %{label}<br>Average Rating: %{customdata[0]:.2f}<br>Data Points: %{customdata[1]}<extra></extra>"
 
-# Create the Sankey diagram
-fig_sankey = go.Figure(data=[go.Sankey(
-    node=dict(
-        pad=15,
-        thickness=20,
-        line=dict(color="black", width=0.5),
-        label=labels,
-        color=node_colors,
-        customdata=[node_scores[label] for label in labels],
-        hovertemplate=hover_template
-    ),
-    link=dict(
-        source=source_indices,
-        target=target_indices,
-        value=value
-    )
-)])
+# # Sort labels and custom data by average rating within each year group
+# sorted_labels = []
+# sorted_customdata = []
+# sorted_node_colors = []
+
+# for year in years:
+#     year_labels = [label for label in labels if label.startswith(f"{year} -")]
+#     year_labels_sorted = sorted(year_labels, key=lambda x: node_scores[x], reverse=True)
+#     sorted_labels.extend(year_labels_sorted)
+#     sorted_customdata.extend([[node_scores[label], node_counts[label]] for label in year_labels_sorted])
+#     sorted_node_colors.extend([genre_colors[label.split(" - ")[1]] for label in year_labels_sorted])
+
+# # Create the Sankey diagram
+# fig_sankey = go.Figure(data=[go.Sankey(
+#     node=dict(
+#         pad=15,
+#         thickness=20,
+#         line=dict(color="black", width=0.5),
+#         label=sorted_labels,
+#         color=sorted_node_colors,
+#         customdata=sorted_customdata,
+#         hovertemplate=hover_template
+#     ),
+#     link=dict(
+#         source=[sorted_labels.index(label) for label in source],
+#         target=[sorted_labels.index(label) for label in target],
+#         value=value
+#     )
+# )])
+
+# create parallel fig
+df_parallel = df2[df2['Year'] >= 2020]
+df_parallel = df_parallel[df_parallel['Genre'].isin(['Action', 'Comedy', 'Drama', 'Thriller'])]
+# create color scale
+genres = df_parallel['Genre'].unique()
+genre_color = {
+    'Action': '#FFA500',
+    'Comedy': 'green',
+    'Drama': 'red',
+    'Thrilller': 'purple'
+}
+df_parallel['Color'] = df_parallel['Genre'].map(genre_color)
+# px parallel fig
+fig_parallel = px.parallel_coordinates(df_parallel, dimensions=['Year', 'Rating', 'Revenue'], color='Color')
 
 #Create the treemap fig
 fig_one = px.treemap(names = ["Eve","Cain", "Seth", "Enos", "Noam", "Abel", "Awan", "Enoch", "Azura"],
@@ -152,7 +187,7 @@ app.layout = dmc.Container([
         dmc.Title("Dataset", size="h10"),
         dash_table.DataTable(data=df2.to_dict('records'), page_size=10, style_table={'overflowX': 'auto'})
     ]),
-    dcc.Graph(id="graph-sankey", figure=fig_sankey),
+    dcc.Graph(id="graph-parallel", figure=fig_parallel),
     dmc.Grid([
         dmc.Col([
             dcc.Graph(id='graph-one',figure=fig_one)

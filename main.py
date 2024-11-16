@@ -9,6 +9,10 @@ import plotly.graph_objects as go
 # preprocess the dataset
 df2 = pd.read_csv('./datasets/dataset.csv')
 df2 = df2.assign(Genre=df2['Genre'].str.split(', ')).explode('Genre') # tokenise genre
+df2 = df2.assign(Cast=df2['Cast'].str.split(', ')).explode('Cast') # tokenise cast
+df2 = df2.assign(Director=df2['Director'].str.split(', ')).explode('Director') # tokenise director
+df2 = df2.assign(Country=df2['Country'].str.split(', ')).explode('Country') # tokenise country
+df2 = df2[df2['Year'] >= 2000] # filter out movies before 2000
 
 #data summary
 
@@ -145,21 +149,20 @@ df2 = df2.assign(Genre=df2['Genre'].str.split(', ')).explode('Genre') # tokenise
 #     )
 # )])
 
-# create parallel fig
-df_parallel = df2[df2['Year'] >= 2020]
-df_parallel = df_parallel[df_parallel['Genre'].isin(['Action', 'Comedy', 'Drama', 'Thriller'])]
-# create color scale
-genres = df_parallel['Genre'].unique()
-genre_color = {
-    'Action': '#FFA500',
-    'Comedy': 'green',
-    'Drama': 'red',
-    'Thrilller': 'purple'
-}
-df_parallel['Color'] = df_parallel['Genre'].map(genre_color)
-# px parallel fig
-fig_parallel = px.parallel_coordinates(df_parallel, dimensions=['Year', 'Rating', 'Revenue'])
-fig_parallel.update_layout(template='plotly_dark')
+def gen_parallel(df_filtered):
+    # create parallel fig
+    df_parallel = df_filtered[['Year', 'Genre', 'Rating', 'Metascore', 'Votes', 'Revenue']]
+    # df_parallel = df_parallel[df_parallel['Genre'].isin(['Action', 'Comedy', 'Drama', 'Thriller'])]
+    # print(df_parallel.columns)
+    # px parallel fig
+    fig_parallel = px.parallel_coordinates(df_parallel,
+                                            dimensions=['Year', 'Genre', 'Rating', 'Metascore', 'Votes', 'Revenue']
+                                            )
+    fig_parallel.update_layout(template='plotly_dark')
+
+    return fig_parallel
+
+fig_parallel = gen_parallel(df2)
 
 #Create the treemap fig
 fig_one = px.treemap(names = ["Eve","Cain", "Seth", "Enos", "Noam", "Abel", "Awan", "Enoch", "Azura"],
@@ -193,11 +196,29 @@ app = Dash(__name__, external_stylesheets=external_stylesheets)
 app.layout = dmc.Container([
     dmc.Title('Movie and TV Shows Data Visualiztaion', color="blue", size="h3"),
     dmc.Title("COMP4462 Group 8 (Daisy Har, Aatrox Deng, Lyam Tang)", size ="h6" ),
+    html.H1("Filter Panel"),
+    dbc.Row(
+        [
+            dbc.Col(
+                html.Div([
+                    dcc.Dropdown(
+                        id='genre-dropdown',
+                        options=[genre for genre in df2['Genre'].unique()],
+                        multi=True,
+                        searchable=True,
+                        placeholder='Select Genre'
+                    ),
+                    html.Button('filter', id='filter-button'),
+                    html.Div(id='filtered-data', style={'display': 'none'})
+                ])
+            )
+        ]
+    ),
     html.Div([
-        html.I(className='fas fa-search search-icon', style={'margin-right': '5px'}),
+        html.H1(className='fas fa-search search-icon', style={'margin-right': '5px'}),
         dbc.Input(id='search-input', type='text', placeholder='Search...', style={'flex': '1', 'background-color': 'transparent', 'color': 'white'}),
     ], style={'display': 'flex', 'align-items': 'center'}),
-    dcc.Graph(id="graph-parallel", figure=fig_parallel),
+    dcc.Graph(id="fig-parallel", figure=fig_parallel),
     dmc.Grid([
         dmc.Col([
             dcc.Graph(id='graph-one',figure=fig_one)
@@ -214,22 +235,31 @@ app.layout = dmc.Container([
             dmc.Text("Dropdown selectors for Choropleth Map")
         ], span=6)
 
-    ]),
-    dmc.Grid([
-        dmc.Col([
-            dcc.Dropdown(['Genres', 'Rating','Directors'], multi=True)
-        ], span=6),
-        dmc.Col([
-            dcc.Dropdown(['Genres', 'Rating','Directors'])
-        ], span=6)
+    ])],
+    fluid=True)
 
-    ])
+@app.callback(
+    Output('filtered-data', 'children'),
+    Input('filter-button', 'n_clicks'),
+    Input('genre-dropdown', 'value')
+)
+def filter_data(n_clicks, genre_values):
+    df_filtered = df2[
+        (df2['Genre'].isin(genre_values if genre_values else df2['Genre']))
+    ]
 
+    return df_filtered.to_json(orient='split')
 
-], fluid=True)
+@app.callback(
+    Output('fig-parallel', 'figure'),
+    Input('filtered-data', 'children')
+)
+def updata_graph(filtered_data):
+    df_filtered = pd.read_json(filtered_data, orient='split')
 
-#Add interactive buttons
+    fig_parallel = gen_parallel(df_filtered)
 
+    return fig_parallel
 
 #run app
 if __name__ == '__main__':

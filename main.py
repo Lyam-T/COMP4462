@@ -12,7 +12,8 @@ df2 = df2.assign(Genre=df2['Genre'].str.split(', ')).explode('Genre') # tokenise
 df2 = df2.assign(Cast=df2['Cast'].str.split(', ')).explode('Cast') # tokenise cast
 df2 = df2.assign(Director=df2['Director'].str.split(', ')).explode('Director') # tokenise director
 df2 = df2.assign(Country=df2['Country'].str.split(', ')).explode('Country') # tokenise country
-df2 = df2[df2['Year'] >= 2000] # filter out movies before 2000
+df2 = df2[df2['Revenue'] >= 0] # filter out movies with negative revenue
+df2 = df2[df2['Year'] >= 2020] # filter out movies before 2020
 
 #data summary
 
@@ -196,9 +197,11 @@ app = Dash(__name__, external_stylesheets=external_stylesheets)
 app.layout = dmc.Container([
     dmc.Title('Movie and TV Shows Data Visualiztaion', color="blue", size="h3"),
     dmc.Title("COMP4462 Group 8 (Daisy Har, Aatrox Deng, Lyam Tang)", size ="h6" ),
-    html.H1("Filter Panel"),
     dbc.Row(
         [
+            html.Button(id='filter-button', children=[
+                html.I(className='fas fa-filter', style={'margin-right': '5px', 'color': 'white'}),
+            ], style={'background-color': 'transparent', 'border': 'none'}),
             dbc.Col(
                 html.Div([
                     dcc.Dropdown(
@@ -206,16 +209,67 @@ app.layout = dmc.Container([
                         options=[genre for genre in df2['Genre'].unique()],
                         multi=True,
                         searchable=True,
-                        placeholder='Select Genre'
+                        placeholder='Select Genre',
+                        className='custom-dropdown'
                     ),
-                    html.Button('filter', id='filter-button'),
+                    dcc.Dropdown(
+                        id='country-dropdown',
+                        options=[genre for genre in df2['Country'].unique()],
+                        multi=True,
+                        searchable=True,
+                        placeholder='Select Conutry'
+                    ),
+                    html.Link(rel='stylesheet', href='./styles.css'),
                     html.Div(id='filtered-data', style={'display': 'none'})
                 ])
+            ),
+            dbc.Col(
+                html.Div([
+                    dcc.Dropdown(
+                        id='director-dropdown',
+                        options=[genre for genre in df2['Director'].unique()],
+                        multi=True,
+                        searchable=True,
+                        placeholder='Select Director'
+                    ),
+                    dcc.Dropdown(
+                        id='cast-dropdown',
+                        options=[genre for genre in df2['Cast'].unique()],
+                        multi=True,
+                        searchable=True,
+                        placeholder='Select Cast'
+                    )
+               ])
+            ),
+            dbc.Col(
+                html.Div([
+                    dcc.RangeSlider(
+                        id='year-slider',
+                        min=2020,
+                        max=2025,
+                        step=1,
+                        marks={i: str(i) for i in range(2020, 2026)},
+                        value=[2020, 2025],
+                    ),
+                    dcc.RangeSlider(
+                        id='reveue-slider',
+                        min=df2['Revenue'].min(),
+                        max=df2['Revenue'].max(),
+                        step=100000000,
+                        marks={i: f'{i:,}' for i in range(0, int(df2['Revenue'].max()), 1000000000)},
+                        value=[0, df2['Revenue'].max()]
+                    )
+                ])
             )
-        ]
-    ),
+        ],
+    style={
+        'border': '1px solid #343a40',
+        'padding': '10px',
+        'background-color': '#212329',
+        'border-radius': '5px'
+    }),
     html.Div([
-        html.H1(className='fas fa-search search-icon', style={'margin-right': '5px'}),
+        html.I(className='fas fa-search search-icon', style={'margin-right': '5px'}),
         dbc.Input(id='search-input', type='text', placeholder='Search...', style={'flex': '1', 'background-color': 'transparent', 'color': 'white'}),
     ], style={'display': 'flex', 'align-items': 'center'}),
     dcc.Graph(id="fig-parallel", figure=fig_parallel),
@@ -241,11 +295,21 @@ app.layout = dmc.Container([
 @app.callback(
     Output('filtered-data', 'children'),
     Input('filter-button', 'n_clicks'),
-    Input('genre-dropdown', 'value')
+    Input('genre-dropdown', 'value'),
+    Input('country-dropdown', 'value'),
+    Input('director-dropdown', 'value'),
+    Input('cast-dropdown', 'value'),
+    Input('year-slider', 'value'),
+    Input('reveue-slider', 'value')
 )
-def filter_data(n_clicks, genre_values):
+def filter_data(n_clicks, genre_values, country_values, director_values, cast_values, year_range, revenue_range):
     df_filtered = df2[
-        (df2['Genre'].isin(genre_values if genre_values else df2['Genre']))
+        (df2['Genre'].isin(genre_values if genre_values else df2['Genre'])) &
+        (df2['Country'].isin(country_values if country_values else df2['Country'])) &
+        (df2['Director'].isin(director_values if director_values else df2['Director'])) &
+        (df2['Cast'].isin(cast_values if cast_values else df2['Cast'])) &
+        (df2['Year'].between(year_range[0], year_range[1])) &
+        (df2['Revenue'].between(revenue_range[0], revenue_range[1]))
     ]
 
     return df_filtered.to_json(orient='split')

@@ -298,15 +298,6 @@ app.layout = dmc.Container([
         dmc.Col([
             dcc.Graph(id="graph-two", figure=fig_two)
         ], span=6)
-    ]),
-    dmc.Grid([
-        dmc.Col([
-            dmc.Text("Dropdown selectors for Tree Map")
-        ], span=6),
-        dmc.Col([
-            dmc.Text("Dropdown selectors for Choropleth Map")
-        ], span=6)
-
     ])],
     fluid=True)
 

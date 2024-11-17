@@ -157,13 +157,24 @@ def gen_parallel(df_filtered):
     # print(df_parallel.columns)
     # px parallel fig
     fig_parallel = px.parallel_coordinates(df_parallel,
-                                            dimensions=['Year', 'Genre', 'Rating', 'Metascore', 'Votes', 'Revenue']
+                                            dimensions=['Year', 'Rating', 'Revenue']
                                             )
     fig_parallel.update_layout(template='plotly_dark')
 
     return fig_parallel
 
 fig_parallel = gen_parallel(df2)
+
+def gen_bar(df_filtered):
+    df_sorted = df_filtered.drop_duplicates(subset='Title', keep='first').sort_values(by='Revenue', ascending=False).head(10)
+    fig_bar = px.bar(df_sorted, x='Revenue', y='Title', title='Top 10 Revenue Movies', orientation='h')
+
+    fig_bar.update_yaxes(categoryorder='total ascending')
+    fig_bar.update_layout(template='plotly_dark')
+
+    return fig_bar
+
+fig_bar = gen_bar(df2)
 
 #Create the treemap fig
 fig_one = px.treemap(names = ["Eve","Cain", "Seth", "Enos", "Noam", "Abel", "Awan", "Enoch", "Azura"],
@@ -272,7 +283,14 @@ app.layout = dmc.Container([
         html.I(className='fas fa-search search-icon', style={'margin-right': '5px'}),
         dbc.Input(id='search-input', type='text', placeholder='Search...', style={'flex': '1', 'background-color': 'transparent', 'color': 'white'}),
     ], style={'display': 'flex', 'align-items': 'center'}),
-    dcc.Graph(id="fig-parallel", figure=fig_parallel),
+    dmc.Grid([
+        dmc.Col([
+            dcc.Graph(id="fig-parallel", figure=fig_parallel)
+        ], span=8),
+        dmc.Col([
+            dcc.Graph(id="fig-bar", figure=fig_bar)
+        ], span=4)
+    ]),
     dmc.Grid([
         dmc.Col([
             dcc.Graph(id='graph-one',figure=fig_one)
@@ -316,14 +334,16 @@ def filter_data(n_clicks, genre_values, country_values, director_values, cast_va
 
 @app.callback(
     Output('fig-parallel', 'figure'),
+    Output('fig-bar', 'figure'),
     Input('filtered-data', 'children')
 )
 def updata_graph(filtered_data):
     df_filtered = pd.read_json(filtered_data, orient='split')
 
     fig_parallel = gen_parallel(df_filtered)
+    fig_bar = gen_bar(df_filtered)
 
-    return fig_parallel
+    return fig_parallel, fig_bar
 
 #run app
 if __name__ == '__main__':

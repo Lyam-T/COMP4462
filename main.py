@@ -31,16 +31,16 @@ df3 = df3[['Country','ISO_Code','Number of Production']]
 # Duration (min)
 # Genre
 # Rating
-# Metascore
+# Metascore (map)
 # Director
 # Cast
-# Votes
+# Votes (map)
 # Description
 # Review Count
 # Review Title
 # Review
-# Revenue
-# Country
+# Revenue (map)
+# Country (map)
 
 # #Create the line fig
 # df_line = df2.drop_duplicates(subset=['Year', 'Genre'])
@@ -189,11 +189,10 @@ fig_one.update_traces(root_color="lightgrey")
 fig_one.update_layout(margin = dict(t=50, l=25, r=25, b=25), template='plotly_dark')
 
 
-fig_two = px.choropleth(df3, locations='ISO_Code', color='Number of Production', hover_name='Country', color_continuous_scale='Viridis', title='Number of Production by Countries')
-fig_two.update_layout(template='plotly_dark')
+fig_choropleth = px.choropleth(df3, locations='ISO_Code', color='Number of Production', hover_name='Country', color_continuous_scale='Viridis')
+fig_choropleth.update_layout(template='plotly_dark')
 
 
-fig_three = px.pie(names=['Oxygen','Hydrogen','Carbon_Dioxide','Nitrogen'], values=[4500, 2500, 1053, 500], title="Atmosphere Composition")
 
 # set the stylesheet
 external_stylesheets = [
@@ -291,12 +290,27 @@ app.layout = dmc.Container([
             dcc.Graph(id="fig-bar", figure=fig_bar)
         ], span=4)
     ]),
+    dmc.Grid(justify='center',
+             align = 'center',
+        children=[
+        dmc.Col([
+            dmc.Title("Map Selector", size ="h4", align='center', color='blue'),
+            dcc.RadioItems(
+                        id='map-radio',
+                        options=['Number of Production','Revenue','Average Metascore','Average Votes']
+                    ),
+            
+        ], span=2),
+        dmc.Col([
+            dcc.Graph(id="graph-choropleth", figure=fig_choropleth)
+        ], span=10)
+    ]),
     dmc.Grid([
         dmc.Col([
             dcc.Graph(id='graph-one',figure=fig_one)
         ], span=6),
         dmc.Col([
-            dcc.Graph(id="graph-two", figure=fig_two)
+            dcc.Graph(id="graph-two", figure=fig_choropleth)
         ], span=6)
     ])
     

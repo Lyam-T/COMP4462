@@ -31,16 +31,16 @@ df3 = df3[['Country','ISO_Code','Number of Production']]
 # Duration (min)
 # Genre
 # Rating
-# Metascore (map)
+# Metascore 
 # Director
 # Cast
-# Votes (map)
+# Votes 
 # Description
 # Review Count
 # Review Title
 # Review
-# Revenue (map)
-# Country (map)
+# Revenue 
+# Country
 
 # #Create the line fig
 # df_line = df2.drop_duplicates(subset=['Year', 'Genre'])

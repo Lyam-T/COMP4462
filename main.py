@@ -15,6 +15,12 @@ df2 = df2.assign(Country=df2['Country'].str.split(', ')).explode('Country') # to
 df2 = df2[df2['Revenue'] >= 0] # filter out movies with negative revenue
 df2 = df2[df2['Year'] >= 2020] # filter out movies before 2020
 
+country_iso_df = pd.read_csv('./datasets/countries_with_iso_codes.csv')
+df3 = (df2['Country'].value_counts()).reset_index()
+df3.columns = ['Country','Number of Production']
+df3 = df3.merge(country_iso_df, on='Country', how='left')
+df3 = df3[['Country','ISO_Code','Number of Production']]
+
 #data summary
 
 # Attributes:
@@ -183,13 +189,7 @@ fig_one.update_traces(root_color="lightgrey")
 fig_one.update_layout(margin = dict(t=50, l=25, r=25, b=25), template='plotly_dark')
 
 
-df = pd.DataFrame({
-    "Fruit": ["Apples", "Oranges", "Bananas", "Apples", "Oranges", "Bananas"],
-    "Amount": [4, 1, 2, 2, 4, 5],
-    "City": ["SF", "SF", "SF", "Montreal", "Montreal", "Montreal"]
-})
-
-fig_two = px.bar(df, x="Fruit", y="Amount", color="City", barmode="group")
+fig_two = px.choropleth(df3, locations='ISO_Code', color='Number of Production', hover_name='Country', color_continuous_scale='Viridis', title='Number of Production by Countries')
 fig_two.update_layout(template='plotly_dark')
 
 
@@ -298,8 +298,9 @@ app.layout = dmc.Container([
         dmc.Col([
             dcc.Graph(id="graph-two", figure=fig_two)
         ], span=6)
-    ])],
-    fluid=True)
+    ])
+    
+    ],fluid=True,)
 
 @app.callback(
     Output('filtered-data', 'children'),

@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from scipy.stats import norm
 from dash import Dash, _dash_renderer, Input, Output, html, dcc, callback, dash_table
 import dash_bootstrap_components as dbc
 import dash_mantine_components as dmc
@@ -182,6 +183,34 @@ def gen_bar(df_filtered):
 
 fig_bar = gen_bar(df2)
 
+# star graph
+avg_revenue = df2['Revenue'].mean()
+sd_revenue = df2['Revenue'].std()
+
+def gen_star(filtered):
+    score_genre = norm.cdf((df2[df2['Genre'].isin(filtered['Genre'].unique())]['Revenue'].mean() - avg_revenue) / sd_revenue) * 10
+    score_director = norm.cdf((df2[df2['Director'].isin(filtered['Director'].unique())]['Revenue'].mean() - avg_revenue) / sd_revenue) * 10
+    score_cast = norm.cdf((df2[df2['Cast'].isin(filtered['Cast'].unique())]['Revenue'].mean() - avg_revenue) / sd_revenue) * 10
+    score_country = norm.cdf((df2[df2['Country'].isin(filtered['Country'].unique())]['Revenue'].mean() - avg_revenue) / sd_revenue) * 10
+    score_duration = norm.cdf((df2[df2['Duration (min)'].between(filtered['Duration (min)'].min(), filtered['Duration (min)'].max())]['Revenue'].mean() - avg_revenue) / sd_revenue) * 10
+    scores = pd.DataFrame({
+        'Attributes': ['Genre', 'Director', 'Cast', 'Country', 'Duration (min)'],
+        'Values': [score_genre, score_director, score_cast, score_country, score_duration]
+    })
+
+    fig_star = px.line_polar(scores, r='Values', theta='Attributes', line_close=True)
+
+    fig_star.update_traces(fill='toself')
+    fig_star.update_layout(
+        polar=dict(radialaxis=dict(visible=True, range=[0, 10])),
+        template='plotly_dark'
+    )
+
+    return fig_star
+
+fig_star = gen_star(df2)
+    
+
 #Create the treemap fig
 fig_one = px.treemap(names = ["Eve","Cain", "Seth", "Enos", "Noam", "Abel", "Awan", "Enoch", "Azura"],
     parents = ["", "Eve", "Eve", "Seth", "Seth", "Eve", "Eve", "Awan", "Eve"])
@@ -268,7 +297,15 @@ app.layout = dmc.Container([
                         step=100000000,
                         marks={i: f'{i:,}' for i in range(0, int(df2['Revenue'].max()), 1000000000)},
                         value=[0, df2['Revenue'].max()]
-                    )
+                    ),
+                    dcc.RangeSlider(
+                        id='duration-slider',
+                        min=df2['Duration (min)'].min(),
+                        max=df2['Duration (min)'].max(),
+                        step=10,
+                        marks={i: f'{i:,}' for i in range(df2['Duration (min)'].min().astype(int), df2['Duration (min)'].max().astype(int), 10)},
+                        value=[df2['Duration (min)'].min(), df2['Duration (min)'].max()],
+                    ),
                 ])
             )
         ],
@@ -284,10 +321,11 @@ app.layout = dmc.Container([
     ], style={'display': 'flex', 'align-items': 'center'}),
     dmc.Grid([
         dmc.Col([
-            dcc.Graph(id="fig-parallel", figure=fig_parallel)
+            dcc.Graph(id='fig-parallel', figure=fig_parallel)
         ], span=8),
         dmc.Col([
-            dcc.Graph(id="fig-bar", figure=fig_bar)
+            dcc.Graph(id='fig-bar', figure=fig_bar),
+            dcc.Graph(id='fig-star', figure=fig_star)
         ], span=4)
     ]),
     dmc.Grid(justify='center',
@@ -324,16 +362,18 @@ app.layout = dmc.Container([
     Input('director-dropdown', 'value'),
     Input('cast-dropdown', 'value'),
     Input('year-slider', 'value'),
-    Input('reveue-slider', 'value')
+    Input('reveue-slider', 'value'),
+    Input('duration-slider', 'value')
 )
-def filter_data(n_clicks, genre_values, country_values, director_values, cast_values, year_range, revenue_range):
+def filter_data(n_clicks, genre_values, country_values, director_values, cast_values, year_range, revenue_range, duration_range):
     df_filtered = df2[
         (df2['Genre'].isin(genre_values if genre_values else df2['Genre'])) &
         (df2['Country'].isin(country_values if country_values else df2['Country'])) &
         (df2['Director'].isin(director_values if director_values else df2['Director'])) &
         (df2['Cast'].isin(cast_values if cast_values else df2['Cast'])) &
         (df2['Year'].between(year_range[0], year_range[1])) &
-        (df2['Revenue'].between(revenue_range[0], revenue_range[1]))
+        (df2['Revenue'].between(revenue_range[0], revenue_range[1])) &
+        (df2['Duration (min)'].between(duration_range[0], duration_range[1]))
     ]
 
     return df_filtered.to_json(orient='split')
@@ -341,6 +381,7 @@ def filter_data(n_clicks, genre_values, country_values, director_values, cast_va
 @app.callback(
     Output('fig-parallel', 'figure'),
     Output('fig-bar', 'figure'),
+    Output('fig-star', 'figure'),
     Input('filtered-data', 'children')
 )
 def updata_graph(filtered_data):
@@ -348,8 +389,9 @@ def updata_graph(filtered_data):
 
     fig_parallel = gen_parallel(df_filtered)
     fig_bar = gen_bar(df_filtered)
+    fig_star = gen_star(df_filtered)
 
-    return fig_parallel, fig_bar
+    return fig_parallel, fig_bar, fig_star
 
 #run app
 if __name__ == '__main__':

@@ -1,14 +1,25 @@
-/* styles.css */
+/* Fix the dropdown placeholder color to make it more visible */
+.custom-dropdown .Select-placeholder {
+    color: black !important;
+}
+
 .custom-dropdown .Select-control {
-    background-color: transparent;
-    border: 1px solid white;
-    color: white;
+    color: black !important;
+    background-color: #f8f9fa !important;  /* A light background to improve visibility */
 }
 
 .custom-dropdown .Select-menu {
-    background-color: #343a40; /* Dark background color for the options menu */
+    background-color: #f8f9fa !important;  /* Ensure menu has a clear, contrasting background */
+    color: black !important;  /* Make text black for better visibility */
 }
 
-.custom-dropdown .Select-option {
-    color: white; /* Text color for the options */
+/* Add specific rules to override any potential theme conflicts */
+.Select-placeholder,
+.Select__control {
+    color: black !important;
+}
+
+.Select__menu {
+    background-color: #ffffff !important; /* Set menu background to white */
+    color: black !important;  /* Ensure the dropdown text is always visible */
 }

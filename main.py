@@ -212,16 +212,53 @@ fig_star = gen_star(df2)
     
 
 #Create the treemap fig
-fig_one = px.treemap(names = ["Eve","Cain", "Seth", "Enos", "Noam", "Abel", "Awan", "Enoch", "Azura"],
-    parents = ["", "Eve", "Eve", "Seth", "Seth", "Eve", "Eve", "Awan", "Eve"])
-fig_one.update_traces(root_color="lightgrey")
-fig_one.update_layout(margin = dict(t=50, l=25, r=25, b=25), template='plotly_dark')
+def gen_treemap(df_filtered, primary_attr, secondary_attr, comparing_attr):
+    # Group by primary and secondary attributes, summing up the comparing attribute
+    df_treemap = df_filtered.groupby([primary_attr, secondary_attr])[comparing_attr].sum().reset_index()
+    
+    # Filter top 10 primary attribute groups based on comparing attribute
+    top_primary = df_treemap.groupby(primary_attr)[comparing_attr].sum().nlargest(10).index
+    df_treemap = df_treemap[df_treemap[primary_attr].isin(top_primary)]
+    
+    # Filter top 10 secondary attribute groups within each primary attribute group
+    df_treemap = df_treemap.groupby(primary_attr).apply(lambda x: x.nlargest(10, comparing_attr)).reset_index(drop=True)
+    
+    # Prepare the data for the treemap: Each row should have 'parent', 'name', and 'value'
+    treemap_data = []
+    
+    # Add secondary attribute nodes with primary attribute as their parent
+    for _, row in df_treemap.iterrows():
+        primary = row[primary_attr]
+        secondary = row[secondary_attr]
+        value = row[comparing_attr]
+        treemap_data.append({
+            'name': secondary,  # Subcategory (secondary attribute)
+            'parent': primary,   # Parent category (primary attribute)
+            'value': value       # Value to size the box (comparing attribute)
+        })
+    
+    # Add top-level primary attribute nodes to act as parents
+    for primary in top_primary:
+        treemap_data.append({
+            'name': primary,
+            'parent': '',
+            'value': 0  # Top-level primary attributes act as parent nodes with no value
+        })
+    
+    # Create the Treemap figure using Plotly Express
+    fig_treemap = px.treemap(
+        pd.DataFrame(treemap_data),
+        path=['parent', 'name'],
+        values='value',
+        title=f"{comparing_attr} Distribution by {primary_attr} and {secondary_attr}"
+    )
+    
+    fig_treemap.update_layout(template='plotly_dark')
+    
+    return fig_treemap
 
-
-fig_choropleth = px.choropleth(df3, locations='ISO_Code', color='Number of Production', hover_name='Country', color_continuous_scale='Viridis')
-fig_choropleth.update_layout(template='plotly_dark')
-
-
+# Generate the treemap figure
+fig_treemap = gen_treemap(df2, 'Genre', 'Director', 'Revenue')
 
 # set the stylesheet
 external_stylesheets = [
@@ -229,13 +266,17 @@ external_stylesheets = [
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css'
 ]
 
+fig_choropleth = px.choropleth(df3, locations='ISO_Code', color='Number of Production', hover_name='Country', color_continuous_scale='Viridis')
+fig_choropleth.update_layout(template='plotly_dark')
+
+
 #initialize the app
 app = Dash(__name__, external_stylesheets=external_stylesheets)
 
 #app layout
 app.layout = dmc.Container([
-    dmc.Title('Movie and TV Shows Data Visualiztaion', color="blue", size="h3"),
-    dmc.Title("COMP4462 Group 8 (Daisy Har, Aatrox Deng, Lyam Tang)", size ="h6" ),
+    dmc.Title('Movie and TV Shows Data Visualization', color="blue", size="h3"),
+    dmc.Title("COMP4462 Group 8 (Daisy Har, Aatrox Deng, Lyam Tang)", size="h6"),
     dbc.Row(
         [
             html.Button(id='filter-button', children=[
@@ -245,18 +286,27 @@ app.layout = dmc.Container([
                 html.Div([
                     dcc.Dropdown(
                         id='genre-dropdown',
-                        options=[genre for genre in df2['Genre'].unique()],
+                        options=[{'label': genre, 'value': genre} for genre in df2['Genre'].unique()],
                         multi=True,
                         searchable=True,
                         placeholder='Select Genre',
-                        className='custom-dropdown'
+                        className='custom-dropdown',
+                        style={
+                            'color': 'black',  # Text color for selected options
+                            'background-color': 'white'  # Dropdown background color
+                        },
                     ),
                     dcc.Dropdown(
                         id='country-dropdown',
-                        options=[genre for genre in df2['Country'].unique()],
+                        options=[{'label': country, 'value': country} for country in df2['Country'].unique()],
                         multi=True,
                         searchable=True,
-                        placeholder='Select Conutry'
+                        placeholder='Select Country',
+                        className='custom-dropdown',
+                        style={
+                            'color': 'black',  # Text color for selected options
+                            'background-color': 'white'  # Dropdown background color
+                        },
                     ),
                     html.Link(rel='stylesheet', href='./styles.css'),
                     html.Div(id='filtered-data', style={'display': 'none'})
@@ -266,19 +316,29 @@ app.layout = dmc.Container([
                 html.Div([
                     dcc.Dropdown(
                         id='director-dropdown',
-                        options=[genre for genre in df2['Director'].unique()],
+                        options=[{'label': director, 'value': director} for director in df2['Director'].unique()],
                         multi=True,
                         searchable=True,
-                        placeholder='Select Director'
+                        placeholder='Select Director',
+                        className='custom-dropdown',
+                        style={
+                            'color': 'black',  # Text color for selected options
+                            'background-color': 'white'  # Dropdown background color
+                        },
                     ),
                     dcc.Dropdown(
                         id='cast-dropdown',
-                        options=[genre for genre in df2['Cast'].unique()],
+                        options=[{'label': cast, 'value': cast} for cast in df2['Cast'].unique()],
                         multi=True,
                         searchable=True,
-                        placeholder='Select Cast'
+                        placeholder='Select Cast',
+                        className='custom-dropdown',
+                        style={
+                            'color': 'black',  # Text color for selected options
+                            'background-color': 'white'  # Dropdown background color
+                        },
                     )
-               ])
+                ])
             ),
             dbc.Col(
                 html.Div([
@@ -309,12 +369,13 @@ app.layout = dmc.Container([
                 ])
             )
         ],
-    style={
-        'border': '1px solid #343a40',
-        'padding': '10px',
-        'background-color': '#212329',
-        'border-radius': '5px'
-    }),
+        style={
+            'border': '1px solid #343a40',
+            'padding': '10px',
+            'background-color': '#212329',
+            'border-radius': '5px'
+        }
+    ),
     html.Div([
         html.I(className='fas fa-search search-icon', style={'margin-right': '5px'}),
         dbc.Input(id='search-input', type='text', placeholder='Search...', style={'flex': '1', 'background-color': 'transparent', 'color': 'white'}),
@@ -329,30 +390,76 @@ app.layout = dmc.Container([
         ], span=4)
     ]),
     dmc.Grid(justify='center',
-             align = 'center',
-        children=[
-        dmc.Col([
-            dmc.Title("Map Selector", size ="h4", align='center', color='blue'),
-            dcc.RadioItems(
-                        id='map-radio',
-                        options=['Number of Production','Revenue','Average Metascore','Average Votes']
-                    ),
-            
-        ], span=2),
-        dmc.Col([
-            dcc.Graph(id="graph-choropleth", figure=fig_choropleth)
-        ], span=10)
-    ]),
+             align='center',
+             children=[
+                 dmc.Col([
+                     dmc.Title("Map Selector", size="h4", align='center', color='blue'),
+                     dcc.RadioItems(
+                         id='map-radio',
+                         options=['Number of Production', 'Revenue', 'Average Metascore', 'Average Votes']
+                     ),
+
+                 ], span=2),
+                 dmc.Col([
+                     dcc.Graph(id="graph-choropleth", figure=fig_choropleth)
+                 ], span=10)
+             ]),
     dmc.Grid([
         dmc.Col([
-            dcc.Graph(id='graph-one',figure=fig_one)
+            html.Div([
+                dcc.Dropdown(
+                    id='primary-attr-dropdown',
+                    options=[
+                        {'label': 'Genre', 'value': 'Genre'},
+                        {'label': 'Country', 'value': 'Country'},
+                        {'label': 'Director', 'value': 'Director'},
+                        {'label': 'Cast', 'value': 'Cast'}
+                    ],
+                    placeholder='Select Primary Attribute',
+                    className='custom-dropdown',
+                    style={
+                        'color': 'black',  # Text color for selected options
+                        'background-color': 'white'  # Dropdown background color
+                    },
+                ),
+                dcc.Dropdown(
+                    id='secondary-attr-dropdown',
+                    options=[
+                        {'label': 'Genre', 'value': 'Genre'},
+                        {'label': 'Country', 'value': 'Country'},
+                        {'label': 'Director', 'value': 'Director'},
+                        {'label': 'Cast', 'value': 'Cast'}
+                    ],
+                    placeholder='Select Secondary Attribute',
+                    className='custom-dropdown',
+                    style={
+                        'color': 'black',  # Text color for selected options
+                        'background-color': 'white'  # Dropdown background color
+                    },
+                ),
+                dcc.Dropdown(
+                    id='comparing-attr-dropdown',
+                    options=[
+                        {'label': 'Revenue', 'value': 'Revenue'},
+                        {'label': 'Rating', 'value': 'Rating'},
+                        {'label': 'Votes', 'value': 'Votes'}
+                    ],
+                    placeholder='Select Comparing Attribute',
+                    className='custom-dropdown',
+                    style={
+                        'color': 'black',  # Text color for selected options
+                        'background-color': 'white'  # Dropdown background color
+                    },
+                ),
+            ], style={'margin-bottom': '10px'}),
+            dcc.Graph(id='graph-one', figure=fig_treemap)
         ], span=6),
         dmc.Col([
             dcc.Graph(id="graph-two", figure=fig_choropleth)
         ], span=6)
     ])
-    
-    ],fluid=True,)
+], fluid=True)
+
 
 @app.callback(
     Output('filtered-data', 'children'),
@@ -382,18 +489,25 @@ def filter_data(n_clicks, genre_values, country_values, director_values, cast_va
     Output('fig-parallel', 'figure'),
     Output('fig-bar', 'figure'),
     Output('fig-star', 'figure'),
-    Input('filtered-data', 'children')
+    Output('graph-one', 'figure'),
+    Input('filtered-data', 'children'),
+    Input('primary-attr-dropdown', 'value'),
+    Input('secondary-attr-dropdown', 'value'),
+    Input('comparing-attr-dropdown', 'value')
 )
-def updata_graph(filtered_data):
+def update_graph(filtered_data, primary_attr, secondary_attr, comparing_attr):
     df_filtered = pd.read_json(filtered_data, orient='split')
 
     fig_parallel = gen_parallel(df_filtered)
     fig_bar = gen_bar(df_filtered)
     fig_star = gen_star(df_filtered)
-
-    return fig_parallel, fig_bar, fig_star
+    if primary_attr and secondary_attr and comparing_attr:
+        fig_treemap = gen_treemap(df_filtered, primary_attr, secondary_attr, comparing_attr)
+    else:
+        fig_treemap = fig_treemap
+        
+    return fig_parallel, fig_bar, fig_star, fig_treemap
 
 #run app
 if __name__ == '__main__':
     app.run(debug=True)
-

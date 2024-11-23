@@ -213,11 +213,11 @@ fig_star = gen_star(df2)
 
 #Create the treemap fig
 def gen_treemap(df_filtered, primary_attr, secondary_attr, comparing_attr):
-    # Group by primary and secondary attributes, summing up the comparing attribute
-    df_treemap = df_filtered.groupby([primary_attr, secondary_attr])[comparing_attr].sum().reset_index()
+    # Group by primary and secondary attributes, averaging the comparing attribute
+    df_treemap = df_filtered.groupby([primary_attr, secondary_attr])[comparing_attr].mean().reset_index()
     
-    # Filter top 10 primary attribute groups based on comparing attribute
-    top_primary = df_treemap.groupby(primary_attr)[comparing_attr].sum().nlargest(10).index
+    # Filter top 10 primary attribute groups based on the average comparing attribute
+    top_primary = df_treemap.groupby(primary_attr)[comparing_attr].mean().nlargest(10).index
     df_treemap = df_treemap[df_treemap[primary_attr].isin(top_primary)]
     
     # Filter top 10 secondary attribute groups within each primary attribute group
@@ -250,12 +250,13 @@ def gen_treemap(df_filtered, primary_attr, secondary_attr, comparing_attr):
         pd.DataFrame(treemap_data),
         path=['parent', 'name'],
         values='value',
-        title=f"{comparing_attr} Distribution by {primary_attr} and {secondary_attr}"
+        title=f"Average {comparing_attr} Distribution by {primary_attr} and {secondary_attr}"
     )
     
     fig_treemap.update_layout(template='plotly_dark')
     
     return fig_treemap
+
 
 # Generate the treemap figure
 fig_treemap = gen_treemap(df2, 'Genre', 'Director', 'Revenue')

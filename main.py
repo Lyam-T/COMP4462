@@ -146,7 +146,7 @@ toggle_button = html.Div(
     children=[
         html.Button(
             children=[
-                html.I(id='toggle-icon', className='fas fa-toggle-off', style={'color': 'white'})  # Use Font Awesome toggle-on icon
+                html.I(id='toggle-icon', className='fas fa-toggle-on', style={'color': 'white'})  # Use Font Awesome toggle-on icon
             ],
             id='toggle-button',
             n_clicks=0,
@@ -160,16 +160,23 @@ toggle_button = html.Div(
     style={'display': 'flex', 'justify-content': 'center', 'align-items': 'center'}
 )
 
-# create a filter pannel
-filter_panel = html.Div(
-    id='filter-panel', children=[
-        dbc.Row(
-        [
-            html.Button(id='filter-button', children=[
-                html.I(className='fas fa-filter', style={'margin-right': '5px', 'color': 'white'}),
-            ], style={'background-color': 'transparent', 'border': 'none'}),
-            dbc.Col(
-                html.Div([
+general_filter = html.Div(
+    id='general-filter', children=[
+        dbc.Col([
+            dmc.Title("General Filter", size="h4", align='center', color='blue'),
+            dcc.Checklist(
+                id='diagram-checklist',
+                options=[
+                    {'label': 'Heatmap', 'value': 'heatmap'},
+                    {'label': 'Star Coordinates', 'value': 'star'},
+                    {'label': 'Choropleth', 'value': 'choropleth'},
+                    {'label': 'Treemap', 'value': 'treemap'}
+                ],
+                value=['heatmap'],  # Default selected diagrams
+                labelStyle={'display': 'inline-block', 'color': 'white'}
+            ),
+            dbc.Row([
+                dbc.Col([
                     dcc.Dropdown(
                         id='genre-dropdown',
                         options=[{'label': genre, 'value': genre} for genre in df2['Genre'].unique()],
@@ -194,69 +201,149 @@ filter_panel = html.Div(
                             'background-color': 'white'  # Dropdown background color
                         },
                     ),
-                    html.Link(rel='stylesheet', href='./styles.css'),
                     html.Div(id='filtered-data', style={'display': 'none'})
-                ])
-            ),
-            dbc.Col(
-                html.Div([
-                    dcc.Dropdown(
-                        id='director-dropdown',
-                        options=[{'label': director, 'value': director} for director in df2['Director'].unique()],
-                        multi=True,
-                        searchable=True,
-                        placeholder='Select Director',
-                        className='custom-dropdown',
-                        style={
-                            'color': 'black',  # Text color for selected options
-                            'background-color': 'white'  # Dropdown background color
-                        },
-                    ),
-                    dcc.Dropdown(
-                        id='cast-dropdown',
-                        options=[{'label': cast, 'value': cast} for cast in df2['Cast'].unique()],
-                        multi=True,
-                        searchable=True,
-                        placeholder='Select Cast',
-                        className='custom-dropdown',
-                        style={
-                            'color': 'black',  # Text color for selected options
-                            'background-color': 'white'  # Dropdown background color
-                        },
-                    )
-                ])
-            ),
-            dbc.Col(
-                html.Div([
-                    html.Label('Year Range', style={'color': 'white'}),
-                    dcc.RangeSlider(
-                        id='year-slider',
-                        min=2020,
-                        max=2025,
-                        step=1,
-                        marks={i: str(i) for i in range(2020, 2026)},
-                        value=[2020, 2025],
-                    ),
-                    html.Label('Revenue Range', style={'color': 'white'}),
-                    dcc.RangeSlider(
-                        id='reveue-slider',
-                        min=df2['Revenue'].min(),
-                        max=df2['Revenue'].max(),
-                        step=50000000,
-                        marks={i: f'{i//1000}' for i in range(0, int(df2['Revenue'].max()), 500000000)},
-                        value=[0, df2['Revenue'].max()]
-                    ),
-                    html.Label('Duration Range', style={'color': 'white'}),
-                    dcc.RangeSlider(
-                        id='duration-slider',
-                        min=df2['Duration (min)'].min(),
-                        max=df2['Duration (min)'].max(),
-                        step=50,
-                        marks={i: f'{i:,}' for i in range(df2['Duration (min)'].min().astype(int), df2['Duration (min)'].max().astype(int), 50)},
-                        value=[df2['Duration (min)'].min(), df2['Duration (min)'].max()],
-                    ),
-                ])
-            )
+                ]),
+                dbc.Col(
+                    html.Div([
+                        dcc.Dropdown(
+                            id='director-dropdown',
+                            options=[{'label': director, 'value': director} for director in df2['Director'].unique()],
+                            multi=True,
+                            searchable=True,
+                            placeholder='Select Director',
+                            className='custom-dropdown',
+                            style={
+                                'color': 'black',  # Text color for selected options
+                                'background-color': 'white'  # Dropdown background color
+                            },
+                        ),
+                        dcc.Dropdown(
+                            id='cast-dropdown',
+                            options=[{'label': cast, 'value': cast} for cast in df2['Cast'].unique()],
+                            multi=True,
+                            searchable=True,
+                            placeholder='Select Cast',
+                            className='custom-dropdown',
+                            style={
+                                'color': 'black',  # Text color for selected options
+                                'background-color': 'white'  # Dropdown background color
+                            },
+                        )
+                    ])
+                ),
+                dbc.Col(
+                    html.Div([
+                        html.Label('Year Range', style={'color': 'white'}),
+                        dcc.RangeSlider(
+                            id='year-slider',
+                            min=2020,
+                            max=2025,
+                            step=1,
+                            marks={i: str(i) for i in range(2020, 2026)},
+                            value=[2020, 2025],
+                        ),
+                        html.Label('Revenue Range', style={'color': 'white'}),
+                        dcc.RangeSlider(
+                            id='revenue-slider',
+                            min=df2['Revenue'].min(),
+                            max=df2['Revenue'].max(),
+                            step=50000000,
+                            marks={i: f'{i//1000}' for i in range(0, int(df2['Revenue'].max()), 500000000)},
+                            value=[0, df2['Revenue'].max()]
+                        ),
+                        html.Label('Duration Range', style={'color': 'white'}),
+                        dcc.RangeSlider(
+                            id='duration-slider',
+                            min=df2['Duration (min)'].min(),
+                            max=df2['Duration (min)'].max(),
+                            step=50,
+                            marks={i: f'{i:,}' for i in range(df2['Duration (min)'].min().astype(int), df2['Duration (min)'].max().astype(int), 50)},
+                            value=[df2['Duration (min)'].min(), df2['Duration (min)'].max()],
+                        )
+                    ])
+                )
+            ])
+        ])
+    ]
+)
+
+map_filter = html.Div(
+    id='map-filter', children=[
+        dmc.Title("Map Selector", size="h4", align='center', color='blue'),
+        dcc.RadioItems(
+            id='map-radio',
+            options=['Number of Production', 'Revenue', 'Average Metascore', 'Average Votes']
+        )
+    ]
+)
+
+tree_filter = html.Div(
+    id='tree-filter', children=[
+        dmc.Title("Tree Selector", size="h4", align='center', color='blue'),
+        dcc.Dropdown(
+            id='primary-attr-dropdown',
+            options=[
+                {'label': 'Genre', 'value': 'Genre'},
+                {'label': 'Country', 'value': 'Country'},
+                {'label': 'Director', 'value': 'Director'},
+                {'label': 'Cast', 'value': 'Cast'}
+            ],
+            placeholder='Select Primary Attribute',
+            className='custom-dropdown',
+            style={
+                'color': 'black',  # Text color for selected options
+                'background-color': 'white'  # Dropdown background color
+            },
+        ),
+        dcc.Dropdown(
+            id='secondary-attr-dropdown',
+            options=[
+                {'label': 'Genre', 'value': 'Genre'},
+                {'label': 'Country', 'value': 'Country'},
+                {'label': 'Director', 'value': 'Director'},
+                {'label': 'Cast', 'value': 'Cast'}
+            ],
+            placeholder='Select Secondary Attribute',
+            className='custom-dropdown',
+            style={
+                'color': 'black',  # Text color for selected options
+                'background-color': 'white'  # Dropdown background color
+            },
+        ),
+        dcc.Dropdown(
+            id='comparing-attr-dropdown',
+            options=[
+                {'label': 'Revenue', 'value': 'Revenue'},
+                {'label': 'Rating', 'value': 'Rating'},
+                {'label': 'Votes', 'value': 'Votes'}
+            ],
+            placeholder='Select Comparing Attribute',
+            className='custom-dropdown',
+            style={
+                'color': 'black',  # Text color for selected options
+                'background-color': 'white'  # Dropdown background color
+            }
+        )
+    ]
+)
+
+# create a filter pannel
+filter_panel = html.Div(
+    id='filter-panel', children=[
+        dbc.Col(
+        [
+            dbc.Col([
+                html.Button(id='filter-button', children=[
+                    html.I(className='fas fa-filter', style={'margin-right': '5px', 'color': 'white'}),
+                ], style={'background-color': 'transparent', 'border': 'none', 'justify-content': 'center'})
+            ]),
+            dbc.Col([
+                general_filter,
+                html.Hr(style={'border': '1px solid #343a40'}),
+                map_filter,
+                html.Hr(style={'border': '1px solid #343a40'}),
+                tree_filter
+            ])
         ],
         style={
             'border': '1px solid #343a40',
@@ -273,81 +360,10 @@ app.layout = dmc.Container([
     dmc.Title("COMP4462 Group 8 (Daisy Har, Aatrox Deng, Lyam Tang)", size="h6"),
     toggle_button,
     filter_panel,
-    dmc.Grid([
-        dmc.Col([
-            dcc.Graph(id='fig-heatmap', figure=fig_heatmap, hoverData={'points': [{'customdata': ['Action']}]}),
-        ], span=12),
-        # dmc.Col([
-        #     # dcc.Graph(id='fig-bar', figure=fig_bar),
-        #     dcc.Graph(id='fig-star', figure=fig_star)
-        # ], span=4)
-    ]),
-    dmc.Grid(justify='center',
-             align='center',
-             children=[
-                #  dmc.Col([
-                #      dmc.Title("Map Selector", size="h4", align='center', color='blue'),
-                #      dcc.RadioItems(
-                #          id='map-radio',
-                #          options=['Number of Production', 'Revenue', 'Average Metascore', 'Average Votes']
-                #      ),
-
-                #  ], span=2),
-                 dmc.Col([
-                     dcc.Graph(id="graph-choropleth", figure=fig_choropleth)
-                 ], span=12)
-             ]),
-    dmc.Grid([
-        dmc.Col([
-            # html.Div([
-            #     dcc.Dropdown(
-            #         id='primary-attr-dropdown',
-            #         options=[
-            #             {'label': 'Genre', 'value': 'Genre'},
-            #             {'label': 'Country', 'value': 'Country'},
-            #             {'label': 'Director', 'value': 'Director'},
-            #             {'label': 'Cast', 'value': 'Cast'}
-            #         ],
-            #         placeholder='Select Primary Attribute',
-            #         className='custom-dropdown',
-            #         style={
-            #             'color': 'black',  # Text color for selected options
-            #             'background-color': 'white'  # Dropdown background color
-            #         },
-            #     ),
-            #     dcc.Dropdown(
-            #         id='secondary-attr-dropdown',
-            #         options=[
-            #             {'label': 'Genre', 'value': 'Genre'},
-            #             {'label': 'Country', 'value': 'Country'},
-            #             {'label': 'Director', 'value': 'Director'},
-            #             {'label': 'Cast', 'value': 'Cast'}
-            #         ],
-            #         placeholder='Select Secondary Attribute',
-            #         className='custom-dropdown',
-            #         style={
-            #             'color': 'black',  # Text color for selected options
-            #             'background-color': 'white'  # Dropdown background color
-            #         },
-            #     ),
-            #     dcc.Dropdown(
-            #         id='comparing-attr-dropdown',
-            #         options=[
-            #             {'label': 'Revenue', 'value': 'Revenue'},
-            #             {'label': 'Rating', 'value': 'Rating'},
-            #             {'label': 'Votes', 'value': 'Votes'}
-            #         ],
-            #         placeholder='Select Comparing Attribute',
-            #         className='custom-dropdown',
-            #         style={
-            #             'color': 'black',  # Text color for selected options
-            #             'background-color': 'white'  # Dropdown background color
-            #         },
-            #     ),
-            # ], style={'margin-bottom': '10px'}),
-            dcc.Graph(id='graph-one', figure=fig_treemap)
-        ], span=12),
-    ])
+    dcc.Graph(id='fig-heatmap', figure=fig_heatmap, hoverData={'points': [{'customdata': ['Action']}]}, style={'display': 'block'}),
+    dcc.Graph(id='fig-star', figure=fig_star, style={'display': 'block'}),
+    dcc.Graph(id="fig-choropleth", figure=fig_choropleth, style={'display': 'block'}),
+    dcc.Graph(id='fig-tree', figure=fig_treemap, style={'display': 'block'})
 ], fluid=True)
 
 
@@ -359,7 +375,7 @@ app.layout = dmc.Container([
     Input('director-dropdown', 'value'),
     Input('cast-dropdown', 'value'),
     Input('year-slider', 'value'),
-    Input('reveue-slider', 'value'),
+    Input('revenue-slider', 'value'),
     Input('duration-slider', 'value')
 )
 def filter_data(n_clicks, genre_values, country_values, director_values, cast_values, year_range, revenue_range, duration_range):
@@ -377,9 +393,8 @@ def filter_data(n_clicks, genre_values, country_values, director_values, cast_va
 
 @app.callback(
     Output('fig-heatmap', 'figure'),
-    # Output('fig-bar', 'figure'),
     Output('fig-star', 'figure'),
-    # Output('graph-one', 'figure'),
+    # Output('fig-tree', 'figure'),
     Input('filtered-data', 'children')
     # Input('primary-attr-dropdown', 'value'),
     # Input('secondary-attr-dropdown', 'value'),
@@ -399,15 +414,45 @@ def update_graph(filtered_data):
     return fig_heatmap, fig_star
 
 @app.callback(
-    [Output('filter-panel', 'style'),
-     Output('toggle-icon', 'className')],
-    Input('toggle-button', 'n_clicks')
+    [
+        Output('filter-panel', 'style'),
+        Output('toggle-icon', 'className')
+    ],
+        Input('toggle-button', 'n_clicks')
 )
 def toggle_filter_panel(n_clicks):
     if n_clicks % 2 == 1:
-        return {'display': 'block'}, 'fas fa-toggle-off'
+        return {'display': 'block'}, 'fas fa-toggle-on'
     else:
-        return {'display': 'none'}, 'fas fa-toggle-on'
+        return {'display': 'none'}, 'fas fa-toggle-off'
+    
+# Create a callback to update the visibility of the diagrams based on the checklist selection
+@app.callback(
+    [
+        Output('fig-heatmap', 'style'),
+        Output('fig-star', 'style'),
+        Output('fig-choropleth', 'style'),
+        Output('fig-tree', 'style')
+    ],
+    Input('diagram-checklist', 'value')
+)
+def update_diagram_visibility(selected_diagrams):
+    styles = {
+        'fig-heatmap': {'display': 'none'},
+        'fig-star': {'display': 'none'},
+        'fig-choropleth': {'display': 'none'},
+        'fig-tree': {'display': 'none'}
+    }
+    
+    if 'heatmap' in selected_diagrams:
+        styles['fig-heatmap'] = {'display': 'block'}
+    if 'star' in selected_diagrams:
+        styles['fig-star'] = {'display': 'block'}
+    if 'choropleth' in selected_diagrams:
+        styles['fig-choropleth'] = {'display': 'block'}
+    if 'treemap' in selected_diagrams:
+        styles['fig-tree'] = {'display': 'block'}
+    return styles['fig-heatmap'], styles['fig-star'], styles['fig-choropleth'], styles['fig-tree']
 
 #run app
 if __name__ == '__main__':

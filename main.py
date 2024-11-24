@@ -465,6 +465,54 @@ def update_diagram_visibility(selected_diagrams):
         styles['fig-tree'] = {'display': 'block'}
     return styles['fig-heatmap'], styles['fig-star'], styles['fig-choropleth'], styles['fig-tree']
 
+@app.callback(
+    Output('fig-choropleth', 'figure'),
+    Input('map-radio','value')
+)
+
+def update_choro(map_radio):
+    '''
+    if(map_radio=="Revenue"):
+
+        country_iso_df = pd.read_csv('./datasets/countries_with_iso_codes.csv')
+        revenue_by_country = (df2.groupby('Country')['Revenue'].sum()).reset_index()
+        revenue_by_country.columns = ['Country','Revenue']
+        revenue_by_country = revenue_by_country.merge(country_iso_df, on='Country', how='left')
+        revenue_by_country = revenue_by_country[['Country','ISO_Code','Revenue']]
+
+        fig_choropleth = px.choropleth(revenue_by_country, locations='ISO_Code', color='Revenue', hover_name='Country', color_continuous_scale='Viridis')
+        return fig_choropleth
+    elif(map_radio=='Average Metascore'):
+        country_iso_df = pd.read_csv('./datasets/countries_with_iso_codes.csv')
+        metascore_by_country = (df2.groupby('Country')['Metascore'].mean()).reset_index()
+        metascore_by_country.columns = ['Country','Average Metascore']
+        metascore_by_country = metascore_by_country.merge(country_iso_df, on='Country', how='left')
+        metascore_by_country = metascore_by_country[['Country','ISO_Code','Average Metascore']]
+
+        fig_choropleth = px.choropleth(metascore_by_country, locations='ISO_Code', color='Average Metascore', hover_name='Country', color_continuous_scale='Viridis')
+        return fig_choropleth
+    
+    elif(map_radio=='Average Votes'):
+        country_iso_df = pd.read_csv('./datasets/countries_with_iso_codes.csv')
+        votes_by_country = (df2.groupby('Country')['Votes'].mean()).reset_index()
+        votes_by_country.columns = ['Country','Average Votes']
+        votes_by_country = votes_by_country.merge(country_iso_df, on='Country', how='left')
+        votes_by_country = votes_by_country[['Country','ISO_Code','Average Votes']]
+
+        fig_choropleth = px.choropleth(votes_by_country, locations='ISO_Code', color='Average Votes', hover_name='Country', color_continuous_scale='Viridis')
+        return fig_choropleth
+        
+    elif(map_radio=="Number of Production"):
+        country_iso_df = pd.read_csv('./datasets/countries_with_iso_codes.csv')
+        df3 = (df2['Country'].value_counts()).reset_index()
+        df3.columns = ['Country','Number of Production']
+        df3 = df3.merge(country_iso_df, on='Country', how='left')
+        df3 = df3[['Country','ISO_Code','Number of Production']]
+
+        fig_choropleth = px.choropleth(df3, locations='ISO_Code', color='Number of Production', hover_name='Country', color_continuous_scale='Viridis')
+        return fig_choropleth
+    '''
+
 #run app
 if __name__ == '__main__':
     app.run(debug=True)

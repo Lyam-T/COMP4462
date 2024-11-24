@@ -77,7 +77,6 @@ def gen_star(filtered):
 fig_star = gen_star(df2)
     
 
-#Create the treemap fig
 def gen_treemap(df_filtered, primary_attr, secondary_attr, comparing_attr):
     # Group by primary and secondary attributes, averaging the comparing attribute
     df_treemap = df_filtered.groupby([primary_attr, secondary_attr])[comparing_attr].mean().reset_index()
@@ -89,10 +88,10 @@ def gen_treemap(df_filtered, primary_attr, secondary_attr, comparing_attr):
     # Filter top 10 secondary attribute groups within each primary attribute group
     df_treemap = df_treemap.groupby(primary_attr).apply(lambda x: x.nlargest(10, comparing_attr)).reset_index(drop=True)
     
-    # Prepare the data for the treemap: Each row should have 'parent', 'name', and 'value'
+    # Prepare the data for the treemap
     treemap_data = []
+    text_data = []  # To store text for each block
     
-    # Add secondary attribute nodes with primary attribute as their parent
     for _, row in df_treemap.iterrows():
         primary = row[primary_attr]
         secondary = row[secondary_attr]
@@ -102,26 +101,38 @@ def gen_treemap(df_filtered, primary_attr, secondary_attr, comparing_attr):
             'parent': primary,   # Parent category (primary attribute)
             'value': value       # Value to size the box (comparing attribute)
         })
-    
-    # Add top-level primary attribute nodes to act as parents
+        text_data.append(f"{secondary}: {value:,.0f}")  # Add formatted value as text
+
     for primary in top_primary:
         treemap_data.append({
             'name': primary,
             'parent': '',
             'value': 0  # Top-level primary attributes act as parent nodes with no value
         })
-    
-    # Create the Treemap figure using Plotly Express
+        text_data.append(f"{primary}: {df_treemap[df_treemap[primary_attr] == primary][comparing_attr].sum():,.0f}")
+
+    treemap_df = pd.DataFrame(treemap_data)
+    treemap_df['text'] = text_data  # Add text data to the DataFrame
+
+    # Create the Treemap figure using Plotly
     fig_treemap = px.treemap(
-        pd.DataFrame(treemap_data),
+        treemap_df,
         path=['parent', 'name'],
         values='value',
-        title=f"Average {comparing_attr} Distribution by {primary_attr} and {secondary_attr}"
+        title=f"Average {comparing_attr} Distribution by {primary_attr} and {secondary_attr}",
+        custom_data=['text'],  # Pass the custom text
     )
-    
+
+    # Use textinfo to display the custom text on the treemap
+    fig_treemap.update_traces(
+        texttemplate="%{customdata[0]}",  # Use the custom data as the text
+        textinfo="label+text+value",     # Show label, custom text, and value
+    )
+
     fig_treemap.update_layout(template='plotly_dark')
-    
+
     return fig_treemap
+
 
 
 # Generate the treemap figure

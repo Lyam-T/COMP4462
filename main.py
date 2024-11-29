@@ -70,6 +70,39 @@ def gen_star(filtered):
 
     return fig_star
     
+def gen_choropleth(filtered, map_radio):
+    def create_choropleth(data, color_column, title):
+        fig = px.choropleth(data, locations='ISO_Code', color=color_column, hover_name='Country', color_continuous_scale='Viridis', title=title)
+        fig.update_layout(template='plotly_dark')
+        fig.update_coloraxes(colorbar=dict(title=color_column), colorscale='Viridis', cmin=1, cmax=data[color_column].max(), colorbar_tickformat='.0e')
+        return fig
+
+    if map_radio == "Revenue":
+        data = filtered.groupby('Country')['Revenue'].sum().reset_index()
+        data.columns = ['Country', 'Revenue']
+        data = data.merge(country_iso_df, on='Country', how='left')
+        data['Revenue'] = np.log1p(data['Revenue'])  # Apply log scale
+        return create_choropleth(data, 'Revenue', 'Total Revenue by Country (Log Scale)')
+
+    elif map_radio == 'Average Metascore':
+        data = filtered.groupby('Country')['Metascore'].mean().reset_index()
+        data.columns = ['Country', 'Average Metascore']
+        data = data.merge(country_iso_df, on='Country', how='left')
+        return create_choropleth(data, 'Average Metascore', 'Average Metascore by Country')
+
+    elif map_radio == 'Average Votes':
+        data = filtered.groupby('Country')['Votes'].mean().reset_index()
+        data.columns = ['Country', 'Average Votes']
+        data = data.merge(country_iso_df, on='Country', how='left')
+        data['Average Votes'] = np.log1p(data['Average Votes'])  # Apply log scale
+        return create_choropleth(data, 'Average Votes', 'Average Votes by Country (Log Scale)')
+
+    elif map_radio == "Number of Production":
+        data = filtered['Country'].value_counts().reset_index()
+        data.columns = ['Country', 'Number of Production']
+        data = data.merge(country_iso_df, on='Country', how='left')
+        data['Number of Production'] = np.log1p(data['Number of Production'])  # Apply log scale
+        return create_choropleth(data, 'Number of Production', 'Number of Productions by Country (Log Scale)')
 
 def gen_treemap(df_filtered, primary_attr, secondary_attr, comparing_attr):
     # Group by primary and secondary attributes, averaging the comparing attribute
@@ -127,14 +160,11 @@ def gen_treemap(df_filtered, primary_attr, secondary_attr, comparing_attr):
 
     return fig_treemap
 
-fig_choropleth = px.choropleth(df3, locations='ISO_Code', color='Number of Production', hover_name='Country', color_continuous_scale='Viridis')
-fig_choropleth.update_layout(template='plotly_dark')
-
 # generate all the default graph
-def gen_graph(filtered, treemap_attrs):
-    return gen_heatmap(filtered), gen_star(filtered), gen_treemap(filtered, treemap_attrs[0], treemap_attrs[1], treemap_attrs[2])
+def gen_graph(filtered, map_radio, treemap_attrs):
+    return gen_heatmap(filtered), gen_star(filtered), gen_choropleth(filtered, map_radio), gen_treemap(filtered, treemap_attrs[0], treemap_attrs[1], treemap_attrs[2])
 
-fig_heatmap, fig_star, fig_treemap = gen_graph(df2, ['Genre', 'Director', 'Revenue'])
+fig_heatmap, fig_star, fig_choropleth, fig_treemap = gen_graph(df2, 'Revenue',['Genre', 'Director', 'Revenue'])
 
 ## app layout
 # set the stylesheet
@@ -380,6 +410,7 @@ app.layout = dmc.Container([
 @app.callback(
     Output('fig-heatmap', 'figure'),
     Output('fig-star', 'figure'),
+    Output('fig-choropleth', 'figure'),
     Output('fig-tree', 'figure'),
     Output('filter-button', 'n_clicks'),
     [
@@ -396,12 +427,13 @@ app.layout = dmc.Container([
     Input('year-slider', 'value'),
     Input('revenue-slider', 'value'),
     Input('duration-slider', 'value'),
+    Input('map-radio', 'value'),
     Input('primary-attr-dropdown', 'value'),
     Input('secondary-attr-dropdown', 'value'),
     Input('comparing-attr-dropdown', 'value'),
     Input('diagram-checklist', 'value')
 )
-def update(n_clicks, genre_values, country_values, director_values, cast_values, year_range, revenue_range, duration_range, primary_attr, secondary_attr, comparing_attr , selected_diagrams):
+def update(n_clicks, genre_values, country_values, director_values, cast_values, year_range, revenue_range, duration_range, map_radio, primary_attr, secondary_attr, comparing_attr , selected_diagrams):
     # check for filter button click
     if n_clicks == 0:
         raise PreventUpdate
@@ -421,11 +453,7 @@ def update(n_clicks, genre_values, country_values, director_values, cast_values,
         treemap_attrs = ['Genre', 'Director', 'Revenue']
         if primary_attr and secondary_attr and comparing_attr:
             treemap_attrs = [primary_attr, secondary_attr, comparing_attr]
-        updated_fig_heatmap, updated_fig_star, updated_fig_treemap = gen_graph(df_filtered, treemap_attrs)
-        # if primary_attr and secondary_attr and comparing_attr:
-        #     fig_treemap = gen_treemap(df_filtered, primary_attr, secondary_attr, comparing_attr)
-        # else:
-        #     fig_treemap = fig_treemap
+        updated_fig_heatmap, updated_fig_star, updated_fig_choropleth, updated_fig_treemap = gen_graph(df_filtered, map_radio, treemap_attrs)
 
         # update the visibilities of the graphs
         styles = {
@@ -443,7 +471,7 @@ def update(n_clicks, genre_values, country_values, director_values, cast_values,
         if 'treemap' in selected_diagrams:
             styles['fig-tree'] = {'display': 'block'}
 
-        return updated_fig_heatmap, updated_fig_star, updated_fig_treemap, 0, styles['fig-heatmap'], styles['fig-star'], styles['fig-choropleth'], styles['fig-tree']
+        return updated_fig_heatmap, updated_fig_star, updated_fig_choropleth, updated_fig_treemap, 0, styles['fig-heatmap'], styles['fig-star'], styles['fig-choropleth'], styles['fig-tree']
 
 # update filter panel
 @app.callback(
@@ -458,54 +486,6 @@ def toggle_filter_panel(n_clicks):
         return {'display': 'block'}, 'fas fa-toggle-on'
     else:
         return {'display': 'none'}, 'fas fa-toggle-off'
-
-@app.callback(
-    Output('fig-choropleth', 'figure'),
-    Input('map-radio','value')
-)
-
-def update_choro(map_radio):
-    '''
-    if(map_radio=="Revenue"):
-
-        country_iso_df = pd.read_csv('./datasets/countries_with_iso_codes.csv')
-        revenue_by_country = (df2.groupby('Country')['Revenue'].sum()).reset_index()
-        revenue_by_country.columns = ['Country','Revenue']
-        revenue_by_country = revenue_by_country.merge(country_iso_df, on='Country', how='left')
-        revenue_by_country = revenue_by_country[['Country','ISO_Code','Revenue']]
-
-        fig_choropleth = px.choropleth(revenue_by_country, locations='ISO_Code', color='Revenue', hover_name='Country', color_continuous_scale='Viridis')
-        return fig_choropleth
-    elif(map_radio=='Average Metascore'):
-        country_iso_df = pd.read_csv('./datasets/countries_with_iso_codes.csv')
-        metascore_by_country = (df2.groupby('Country')['Metascore'].mean()).reset_index()
-        metascore_by_country.columns = ['Country','Average Metascore']
-        metascore_by_country = metascore_by_country.merge(country_iso_df, on='Country', how='left')
-        metascore_by_country = metascore_by_country[['Country','ISO_Code','Average Metascore']]
-
-        fig_choropleth = px.choropleth(metascore_by_country, locations='ISO_Code', color='Average Metascore', hover_name='Country', color_continuous_scale='Viridis')
-        return fig_choropleth
-    
-    elif(map_radio=='Average Votes'):
-        country_iso_df = pd.read_csv('./datasets/countries_with_iso_codes.csv')
-        votes_by_country = (df2.groupby('Country')['Votes'].mean()).reset_index()
-        votes_by_country.columns = ['Country','Average Votes']
-        votes_by_country = votes_by_country.merge(country_iso_df, on='Country', how='left')
-        votes_by_country = votes_by_country[['Country','ISO_Code','Average Votes']]
-
-        fig_choropleth = px.choropleth(votes_by_country, locations='ISO_Code', color='Average Votes', hover_name='Country', color_continuous_scale='Viridis')
-        return fig_choropleth
-        
-    elif(map_radio=="Number of Production"):
-        country_iso_df = pd.read_csv('./datasets/countries_with_iso_codes.csv')
-        df3 = (df2['Country'].value_counts()).reset_index()
-        df3.columns = ['Country','Number of Production']
-        df3 = df3.merge(country_iso_df, on='Country', how='left')
-        df3 = df3[['Country','ISO_Code','Number of Production']]
-
-        fig_choropleth = px.choropleth(df3, locations='ISO_Code', color='Number of Production', hover_name='Country', color_continuous_scale='Viridis')
-        return fig_choropleth
-    '''
 
 #run app
 if __name__ == '__main__':

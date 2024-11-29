@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from dash.exceptions import PreventUpdate
 from scipy.stats import norm
 from dash import Dash, _dash_renderer, Input, Output, html, dcc, callback, dash_table
 import dash_bootstrap_components as dbc
@@ -7,7 +8,7 @@ import dash_mantine_components as dmc
 import plotly.express as px
 import plotly.graph_objects as go
 
-# preprocess the dataset
+## preprocess the dataset
 df2 = pd.read_csv('./datasets/dataset.csv')
 df2 = df2.assign(Genre=df2['Genre'].str.split(', ')).explode('Genre') # tokenise genre
 df2 = df2.assign(Cast=df2['Cast'].str.split(', ')).explode('Cast') # tokenise cast
@@ -23,10 +24,10 @@ df3.columns = ['Country','Number of Production']
 df3 = df3.merge(country_iso_df, on='Country', how='left')
 df3 = df3[['Country','ISO_Code','Number of Production']]
 
-#data summary
-
+## data summary
 # Attributes: Poster, Title, Year, Certificate, Duration (min), Genre, Rating, Metascore, Director, Cast, Votes, Description, Review Count, Review Title, Review, Revenue, Country
 
+## funcs to gen graphs
 # func to gen heatmap fig
 def gen_heatmap(df_filtered):
     # Group the data by year and genre, and calculate the sum of revenue
@@ -43,8 +44,6 @@ def gen_heatmap(df_filtered):
     fig_heatmap.update_layout(template='plotly_dark', height=600)
 
     return fig_heatmap
-
-fig_heatmap = gen_heatmap(df2)
 
 # star graph
 avg_revenue = df2['Revenue'].mean()
@@ -70,8 +69,6 @@ def gen_star(filtered):
     )
 
     return fig_star
-
-fig_star = gen_star(df2)
     
 
 def gen_treemap(df_filtered, primary_attr, secondary_attr, comparing_attr):
@@ -130,26 +127,26 @@ def gen_treemap(df_filtered, primary_attr, secondary_attr, comparing_attr):
 
     return fig_treemap
 
+fig_choropleth = px.choropleth(df3, locations='ISO_Code', color='Number of Production', hover_name='Country', color_continuous_scale='Viridis')
+fig_choropleth.update_layout(template='plotly_dark')
 
+# generate all the default graph
+def gen_graph(filtered, treemap_attrs):
+    return gen_heatmap(filtered), gen_star(filtered), gen_treemap(filtered, treemap_attrs[0], treemap_attrs[1], treemap_attrs[2])
 
-# Generate the treemap figure
-fig_treemap = gen_treemap(df2, 'Genre', 'Director', 'Revenue')
+fig_heatmap, fig_star, fig_treemap = gen_graph(df2, ['Genre', 'Director', 'Revenue'])
 
+## app layout
 # set the stylesheet
 external_stylesheets = [
     'https://stackpath.bootstrapcdn.com/bootswatch/4.5.2/darkly/bootstrap.min.css',
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css'
 ]
 
-fig_choropleth = px.choropleth(df3, locations='ISO_Code', color='Number of Production', hover_name='Country', color_continuous_scale='Viridis')
-fig_choropleth.update_layout(template='plotly_dark')
-
-
-#initialize the app
+# initialize the app
 app = Dash(__name__, external_stylesheets=external_stylesheets)
 
-# Add a button to toggle the visibility of the filter panel
-# Add a div to wrap the toggle button and center it
+# create a toggle button
 toggle_button = html.Div(
     children=[
         html.Button(
@@ -168,6 +165,7 @@ toggle_button = html.Div(
     style={'display': 'flex', 'justify-content': 'center', 'align-items': 'center'}
 )
 
+# create a general filer
 general_filter = html.Div(
     id='general-filter', children=[
         dbc.Col([
@@ -275,6 +273,8 @@ general_filter = html.Div(
     ]
 )
 
+# create a
+# create a map fiter
 map_filter = html.Div(
     id='map-filter', children=[
         dmc.Title("Map Selector", size="h4", align='center', color='blue'),
@@ -285,6 +285,7 @@ map_filter = html.Div(
     ]
 )
 
+# create a tree filter
 tree_filter = html.Div(
     id='tree-filter', children=[
         dmc.Title("Tree Selector", size="h4", align='center', color='blue'),
@@ -335,7 +336,7 @@ tree_filter = html.Div(
     ]
 )
 
-# create a filter pannel
+# create a filter panel
 filter_panel = html.Div(
     id='filter-panel', children=[
         dbc.Col(
@@ -362,7 +363,7 @@ filter_panel = html.Div(
     ],
     style={'display': 'none'})
 
-#app layout
+# overall layout
 app.layout = dmc.Container([
     dmc.Title('Movie and TV Shows Data Visualization', color="blue", size="h3"),
     dmc.Title("COMP4462 Group 8 (Daisy Har, Aatrox Deng, Lyam Tang)", size="h6"),
@@ -374,9 +375,19 @@ app.layout = dmc.Container([
     dcc.Graph(id='fig-tree', figure=fig_treemap, style={'display': 'block'})
 ], fluid=True)
 
-
+## callback funcs
+# update graph
 @app.callback(
-    Output('filtered-data', 'children'),
+    Output('fig-heatmap', 'figure'),
+    Output('fig-star', 'figure'),
+    Output('fig-tree', 'figure'),
+    Output('filter-button', 'n_clicks'),
+    [
+        Output('fig-heatmap', 'style'),
+        Output('fig-star', 'style'),
+        Output('fig-choropleth', 'style'),
+        Output('fig-tree', 'style')
+    ],
     Input('filter-button', 'n_clicks'),
     Input('genre-dropdown', 'value'),
     Input('country-dropdown', 'value'),
@@ -384,43 +395,57 @@ app.layout = dmc.Container([
     Input('cast-dropdown', 'value'),
     Input('year-slider', 'value'),
     Input('revenue-slider', 'value'),
-    Input('duration-slider', 'value')
+    Input('duration-slider', 'value'),
+    Input('primary-attr-dropdown', 'value'),
+    Input('secondary-attr-dropdown', 'value'),
+    Input('comparing-attr-dropdown', 'value'),
+    Input('diagram-checklist', 'value')
 )
-def filter_data(n_clicks, genre_values, country_values, director_values, cast_values, year_range, revenue_range, duration_range):
-    df_filtered = df2[
-        (df2['Genre'].isin(genre_values if genre_values else df2['Genre'])) &
-        (df2['Country'].isin(country_values if country_values else df2['Country'])) &
-        (df2['Director'].isin(director_values if director_values else df2['Director'])) &
-        (df2['Cast'].isin(cast_values if cast_values else df2['Cast'])) &
-        (df2['Year'].between(year_range[0], year_range[1])) &
-        (df2['Revenue'].between(revenue_range[0], revenue_range[1])) &
-        (df2['Duration (min)'].between(duration_range[0], duration_range[1]))
-    ]
+def update(n_clicks, genre_values, country_values, director_values, cast_values, year_range, revenue_range, duration_range, primary_attr, secondary_attr, comparing_attr , selected_diagrams):
+    # check for filter button click
+    if n_clicks == 0:
+        raise PreventUpdate
+    else:
+        # filter df2 based on the selected values
+        df_filtered = df2[
+            (df2['Genre'].isin(genre_values if genre_values else df2['Genre'])) &
+            (df2['Country'].isin(country_values if country_values else df2['Country'])) &
+            (df2['Director'].isin(director_values if director_values else df2['Director'])) &
+            (df2['Cast'].isin(cast_values if cast_values else df2['Cast'])) &
+            (df2['Year'].between(year_range[0], year_range[1])) &
+            (df2['Revenue'].between(revenue_range[0], revenue_range[1])) &
+            (df2['Duration (min)'].between(duration_range[0], duration_range[1]))
+        ]
 
-    return df_filtered.to_json(orient='split')
+        # update the graphs
+        treemap_attrs = ['Genre', 'Director', 'Revenue']
+        if primary_attr and secondary_attr and comparing_attr:
+            treemap_attrs = [primary_attr, secondary_attr, comparing_attr]
+        updated_fig_heatmap, updated_fig_star, updated_fig_treemap = gen_graph(df_filtered, treemap_attrs)
+        # if primary_attr and secondary_attr and comparing_attr:
+        #     fig_treemap = gen_treemap(df_filtered, primary_attr, secondary_attr, comparing_attr)
+        # else:
+        #     fig_treemap = fig_treemap
 
-@app.callback(
-    Output('fig-heatmap', 'figure'),
-    Output('fig-star', 'figure'),
-    # Output('fig-tree', 'figure'),
-    Input('filtered-data', 'children')
-    # Input('primary-attr-dropdown', 'value'),
-    # Input('secondary-attr-dropdown', 'value'),
-    # Input('comparing-attr-dropdown', 'value')
-)
-def update_graph(filtered_data):
-    df_filtered = pd.read_json(filtered_data, orient='split')
+        # update the visibilities of the graphs
+        styles = {
+            'fig-heatmap': {'display': 'none'},
+            'fig-star': {'display': 'none'},
+            'fig-choropleth': {'display': 'none'},
+            'fig-tree': {'display': 'none'}
+        }
+        if 'heatmap' in selected_diagrams:
+            styles['fig-heatmap'] = {'display': 'block'}
+        if 'star' in selected_diagrams:
+            styles['fig-star'] = {'display': 'block'}
+        if 'choropleth' in selected_diagrams:
+            styles['fig-choropleth'] = {'display': 'block'}
+        if 'treemap' in selected_diagrams:
+            styles['fig-tree'] = {'display': 'block'}
 
-    fig_heatmap = gen_heatmap(df_filtered)
-    # fig_bar = gen_bar(df_filtered)
-    fig_star = gen_star(df_filtered)
-    # if primary_attr and secondary_attr and comparing_attr:
-    #     fig_treemap = gen_treemap(df_filtered, primary_attr, secondary_attr, comparing_attr)
-    # else:
-    #     fig_treemap = fig_treemap
-        
-    return fig_heatmap, fig_star
+        return updated_fig_heatmap, updated_fig_star, updated_fig_treemap, 0, styles['fig-heatmap'], styles['fig-star'], styles['fig-choropleth'], styles['fig-tree']
 
+# update filter panel
 @app.callback(
     [
         Output('filter-panel', 'style'),
@@ -433,34 +458,6 @@ def toggle_filter_panel(n_clicks):
         return {'display': 'block'}, 'fas fa-toggle-on'
     else:
         return {'display': 'none'}, 'fas fa-toggle-off'
-    
-# Create a callback to update the visibility of the diagrams based on the checklist selection
-@app.callback(
-    [
-        Output('fig-heatmap', 'style'),
-        Output('fig-star', 'style'),
-        Output('fig-choropleth', 'style'),
-        Output('fig-tree', 'style')
-    ],
-    Input('diagram-checklist', 'value')
-)
-def update_diagram_visibility(selected_diagrams):
-    styles = {
-        'fig-heatmap': {'display': 'none'},
-        'fig-star': {'display': 'none'},
-        'fig-choropleth': {'display': 'none'},
-        'fig-tree': {'display': 'none'}
-    }
-    
-    if 'heatmap' in selected_diagrams:
-        styles['fig-heatmap'] = {'display': 'block'}
-    if 'star' in selected_diagrams:
-        styles['fig-star'] = {'display': 'block'}
-    if 'choropleth' in selected_diagrams:
-        styles['fig-choropleth'] = {'display': 'block'}
-    if 'treemap' in selected_diagrams:
-        styles['fig-tree'] = {'display': 'block'}
-    return styles['fig-heatmap'], styles['fig-star'], styles['fig-choropleth'], styles['fig-tree']
 
 @app.callback(
     Output('fig-choropleth', 'figure'),

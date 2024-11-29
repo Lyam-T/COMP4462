@@ -32,6 +32,10 @@ def gen_heatmap(df_filtered):
     # Group the data by year and genre, and calculate the sum of revenue
     df_heatmap = df_filtered.groupby(['Year', 'Genre'])['Revenue'].sum().reset_index()
 
+    # Calculate the dynamic height for the heatmap based on the number of unique genres
+    unique_genres = df_heatmap['Genre'].nunique()
+    dynamic_height = 25 * unique_genres
+
     # Create the heatmap
     fig_heatmap = px.density_heatmap(df_heatmap,
                                      x='Year',
@@ -40,7 +44,7 @@ def gen_heatmap(df_filtered):
                                      color_continuous_scale='YlOrBr',
                                      title='Revenue Heatmap by Year and Genre')
 
-    fig_heatmap.update_layout(template='plotly_dark')
+    fig_heatmap.update_layout(template='plotly_dark', height=dynamic_height)
 
     return fig_heatmap
 

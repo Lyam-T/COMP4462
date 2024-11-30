@@ -77,32 +77,29 @@ def gen_choropleth(filtered, map_radio):
         fig.update_coloraxes(colorbar=dict(title=color_column), colorscale='Viridis', cmin=1, cmax=data[color_column].max(), colorbar_tickformat='.0e')
         return fig
 
-    if map_radio == "Revenue":
-        data = filtered.groupby('Country')['Revenue'].sum().reset_index()
-        data.columns = ['Country', 'Revenue']
-        data = data.merge(country_iso_df, on='Country', how='left')
-        data['Revenue'] = np.log1p(data['Revenue'])  # Apply log scale
-        return create_choropleth(data, 'Revenue', 'Total Revenue by Country (Log Scale)')
-
-    elif map_radio == 'Average Metascore':
+    if map_radio == 'Average Metascore':
         data = filtered.groupby('Country')['Metascore'].mean().reset_index()
         data.columns = ['Country', 'Average Metascore']
         data = data.merge(country_iso_df, on='Country', how='left')
         return create_choropleth(data, 'Average Metascore', 'Average Metascore by Country')
-
     elif map_radio == 'Average Votes':
         data = filtered.groupby('Country')['Votes'].mean().reset_index()
         data.columns = ['Country', 'Average Votes']
         data = data.merge(country_iso_df, on='Country', how='left')
         data['Average Votes'] = np.log1p(data['Average Votes'])  # Apply log scale
         return create_choropleth(data, 'Average Votes', 'Average Votes by Country (Log Scale)')
-
     elif map_radio == "Number of Production":
         data = filtered['Country'].value_counts().reset_index()
         data.columns = ['Country', 'Number of Production']
         data = data.merge(country_iso_df, on='Country', how='left')
         data['Number of Production'] = np.log1p(data['Number of Production'])  # Apply log scale
         return create_choropleth(data, 'Number of Production', 'Number of Productions by Country (Log Scale)')
+    else:
+        data = filtered.groupby('Country')['Revenue'].sum().reset_index()
+        data.columns = ['Country', 'Revenue']
+        data = data.merge(country_iso_df, on='Country', how='left')
+        data['Revenue'] = np.log1p(data['Revenue'])  # Apply log scale
+        return create_choropleth(data, 'Revenue', 'Total Revenue by Country (Log Scale)')        
 
 def gen_treemap(df_filtered, primary_attr, secondary_attr, comparing_attr):
     # Group by primary and secondary attributes, averaging the comparing attribute
@@ -401,7 +398,7 @@ app.layout = dmc.Container([
     filter_panel,
     dcc.Graph(id='fig-heatmap', figure=fig_heatmap, hoverData={'points': [{'customdata': ['Action']}]}, style={'display': 'block'}),
     dcc.Graph(id='fig-star', figure=fig_star, style={'display': 'block'}),
-    dcc.Graph(id="fig-choropleth", figure=fig_choropleth, style={'display': 'block'}),
+    dcc.Graph(id='fig-choropleth', figure=fig_choropleth, style={'display': 'block'}),
     dcc.Graph(id='fig-tree', figure=fig_treemap, style={'display': 'block'})
 ], fluid=True)
 
